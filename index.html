@@ -66,7 +66,7 @@
       </button>
     </nav>
 
-    <div class="sidebar-footer">v1.0 · TaniMap 2024</div>
+    <div class="sidebar-footer">v1.0 · TaniMap 2026</div>
   </aside>
 
   <!-- ===== MAIN CONTENT ===== -->
@@ -310,45 +310,44 @@
       <!-- ========== SETTINGS ========== -->
       <div class="page" id="page-settings">
         <div class="settings-grid">
-          <div class="settings-card">
-            <div class="settings-card-icon">📤</div>
-            <h3>Export Data JSON</h3>
-            <p>Unduh semua data petani dalam format JSON untuk backup.</p>
-            <button class="btn btn-primary" onclick="exportJSON()"><i class="fas fa-download"></i> Export JSON</button>
-          </div>
-          <div class="settings-card">
-            <div class="settings-card-icon">📥</div>
-            <h3>Import Data JSON</h3>
-            <p>Muat data petani dari file JSON yang sudah diexport sebelumnya.</p>
-            <label class="btn btn-outline" style="cursor:pointer">
-              <i class="fas fa-upload"></i> Import JSON
-              <input type="file" accept=".json" onchange="importJSON(event)" style="display:none" />
-            </label>
-          </div>
-          <div class="settings-card">
-            <div class="settings-card-icon">📊</div>
-            <h3>Export CSV</h3>
-            <p>Unduh data petani dalam format CSV untuk dibuka di Excel/Spreadsheet.</p>
-            <button class="btn btn-outline" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
-          </div>
-          <div class="settings-card">
-            <div class="settings-card-icon">🔄</div>
-            <h3>Muat Data Contoh</h3>
-            <p>Muat ulang 10 data petani contoh dari Manggarai NTT.</p>
-            <button class="btn btn-secondary" onclick="loadSampleData()"><i class="fas fa-database"></i> Muat Data Contoh</button>
-          </div>
+
           <div class="settings-card">
             <div class="settings-card-icon">🗑️</div>
             <h3>Reset Semua Data</h3>
             <p>Hapus semua data dari localStorage. Tindakan ini tidak bisa dibatalkan.</p>
             <button class="btn btn-danger" onclick="confirmReset()"><i class="fas fa-trash"></i> Reset Data</button>
           </div>
+
           <div class="settings-card">
             <div class="settings-card-icon">ℹ️</div>
             <h3>Informasi Aplikasi</h3>
             <p>TaniMap v1.0 — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani Berbasis Lokasi.</p>
             <span class="badge badge-green"><i class="fas fa-check-circle"></i> Offline Ready</span>
           </div>
+
+          <div class="settings-card" style="grid-column: 1 / -1">
+            <div class="settings-card-icon">👤</div>
+            <h3>Kontak Pengembang</h3>
+            <div class="info-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); margin-top:8px">
+              <div>
+                <div class="info-key">Nama</div>
+                <div class="info-value">Johan Mada</div>
+              </div>
+              <div>
+                <div class="info-key">Nomor HP</div>
+                <div class="info-value">
+                  <a href="tel:085333068814" style="color:var(--green-600)">085 333 068 814</a>
+                </div>
+              </div>
+              <div>
+                <div class="info-key">Email</div>
+                <div class="info-value">
+                  <a href="mailto:johanmada.jm.jm@gmail.com" style="color:var(--green-600)">johanmada.jm.jm@gmail.com</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
