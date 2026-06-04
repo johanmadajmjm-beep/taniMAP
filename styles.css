@@ -345,7 +345,73 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
 .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 
-/* ---- Photo Upload ---- */
+/* ---- Mini Photo Buttons (dalam baris lahan/tanaman) ---- */
+.mini-photo-wrap { }
+.mini-photo-btns { display: flex; gap: 8px; }
+.mini-photo-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px dashed var(--green-300);
+  border-radius: var(--radius-sm);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+.mini-photo-btn i { font-size: 14px; }
+.mini-photo-btn:hover { background: var(--green-100); border-color: var(--green-500); }
+.mini-photo-btn input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.mini-photo-preview {
+  width: 100%; max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+}
+.mini-photo-clear {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(0,0,0,.55); color: white;
+  border: none; border-radius: 50%;
+  width: 26px; height: 26px; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+/* ---- Photo Choice Buttons (Kamera / Galeri) ---- */
+.photo-choice-btns {
+  display: flex; gap: 12px;
+}
+.photo-choice-btn {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 18px 12px;
+  border: 2px dashed var(--green-300);
+  border-radius: var(--radius-md);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+.photo-choice-btn i { font-size: 26px; }
+.photo-choice-btn:hover {
+  background: var(--green-100);
+  border-color: var(--green-500);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.photo-choice-btn input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+
+/* ---- Photo Upload Area ---- */
 .photo-upload-area {
   border: 2px dashed var(--gray-200);
   border-radius: var(--radius-md);
