@@ -375,6 +375,11 @@ function openAddFarmerModal() {
   document.getElementById('farmerPhotoData').value = '';
   document.getElementById('farmerPhotoPreview').style.display = 'none';
   document.getElementById('photoUploadArea').style.display = 'flex';
+  // Reset inline sections
+  document.getElementById('lahanFormList').innerHTML = '';
+  document.getElementById('tanamanFormList').innerHTML = '';
+  document.getElementById('produksiFormList').innerHTML = '';
+  updateRowCounts();
   openModal('modalFarmer');
 }
 
@@ -404,6 +409,20 @@ function openEditFarmer(id) {
     document.getElementById('farmerPhotoPreview').style.display = 'none';
     document.getElementById('photoUploadArea').style.display = 'flex';
   }
+
+  // Populate inline lahan rows
+  document.getElementById('lahanFormList').innerHTML = '';
+  (f.lahan || []).forEach(l => addLahanRow(l));
+
+  // Populate inline tanaman rows
+  document.getElementById('tanamanFormList').innerHTML = '';
+  (f.tanaman || []).forEach(t => addTanamanRow(t));
+
+  // Populate inline produksi rows
+  document.getElementById('produksiFormList').innerHTML = '';
+  (f.produksi || []).forEach(p => addProduksiRow(p));
+
+  updateRowCounts();
   openModal('modalFarmer');
 }
 
@@ -426,6 +445,71 @@ function saveFarmer(e) {
   const id = document.getElementById('farmerId').value;
   const isEdit = !!id;
 
+  // Kumpulkan data lahan dari inline rows
+  const lahanRows = document.querySelectorAll('#lahanFormList .inline-form-row');
+  const lahanData = [];
+  lahanRows.forEach((row, i) => {
+    const nama = row.querySelector('.lahan-nama')?.value?.trim();
+    const luas = parseFloat(row.querySelector('.lahan-luas')?.value) || 0;
+    if (nama) {
+      lahanData.push({
+        id: row.dataset.id || ('L' + Date.now() + i),
+        nama,
+        luas,
+        status: row.querySelector('.lahan-status')?.value || 'Milik Sendiri',
+        jenis: row.querySelector('.lahan-jenis')?.value || 'Kebun',
+        lat: parseFloat(row.querySelector('.lahan-lat')?.value) || null,
+        lng: parseFloat(row.querySelector('.lahan-lng')?.value) || null,
+        foto: '',
+        catatan: row.querySelector('.lahan-catatan')?.value || ''
+      });
+    }
+  });
+
+  // Kumpulkan data tanaman dari inline rows
+  const tanamanRows = document.querySelectorAll('#tanamanFormList .inline-form-row');
+  const tanamanData = [];
+  tanamanRows.forEach((row, i) => {
+    const jenis = row.querySelector('.tanaman-jenis')?.value?.trim();
+    if (jenis) {
+      tanamanData.push({
+        id: row.dataset.id || ('T' + Date.now() + i),
+        jenis,
+        foto: '',
+        luasTanam: parseFloat(row.querySelector('.tanaman-luas')?.value) || 0,
+        umurTanaman: parseInt(row.querySelector('.tanaman-umur')?.value) || 0,
+        status: row.querySelector('.tanaman-status')?.value || 'Baik',
+        perkiraanPanen: row.querySelector('.tanaman-panen')?.value || '',
+        catatan: row.querySelector('.tanaman-catatan')?.value || ''
+      });
+    }
+  });
+
+  // Kumpulkan data produksi dari inline rows
+  const produksiRows = document.querySelectorAll('#produksiFormList .inline-form-row');
+  const produksiData = [];
+  produksiRows.forEach((row, i) => {
+    const komoditas = row.querySelector('.prod-komoditas')?.value?.trim();
+    const jumlah = parseFloat(row.querySelector('.prod-jumlah')?.value) || 0;
+    const harga = parseFloat(row.querySelector('.prod-harga')?.value) || 0;
+    if (komoditas) {
+      produksiData.push({
+        id: row.dataset.id || ('P' + Date.now() + i),
+        tahun: parseInt(row.querySelector('.prod-tahun')?.value) || new Date().getFullYear(),
+        musim: row.querySelector('.prod-musim')?.value || 'Tanam I',
+        komoditas,
+        jumlah,
+        satuan: row.querySelector('.prod-satuan')?.value || 'Kg',
+        harga,
+        total: jumlah * harga,
+        pembeli: row.querySelector('.prod-pembeli')?.value || '',
+        catatan: row.querySelector('.prod-catatan')?.value || ''
+      });
+    }
+  });
+
+  const existing = isEdit ? farmers.find(f => f.id === id) : null;
+
   const data = {
     id: isEdit ? id : 'F' + Date.now(),
     nama: document.getElementById('fNama').value.trim(),
@@ -441,12 +525,12 @@ function saveFarmer(e) {
     lat: parseFloat(document.getElementById('fLat').value) || null,
     lng: parseFloat(document.getElementById('fLng').value) || null,
     foto: document.getElementById('farmerPhotoData').value,
-    tanggalInput: isEdit ? farmers.find(f=>f.id===id)?.tanggalInput : new Date().toISOString().split('T')[0],
-    lahan: isEdit ? (farmers.find(f=>f.id===id)?.lahan || []) : [],
-    tanaman: isEdit ? (farmers.find(f=>f.id===id)?.tanaman || []) : [],
-    kunjungan: isEdit ? (farmers.find(f=>f.id===id)?.kunjungan || []) : [],
-    hama: isEdit ? (farmers.find(f=>f.id===id)?.hama || []) : [],
-    produksi: isEdit ? (farmers.find(f=>f.id===id)?.produksi || []) : [],
+    tanggalInput: isEdit ? existing?.tanggalInput : new Date().toISOString().split('T')[0],
+    lahan: lahanData,
+    tanaman: tanamanData,
+    kunjungan: isEdit ? (existing?.kunjungan || []) : [],
+    hama: isEdit ? (existing?.hama || []) : [],
+    produksi: produksiData,
   };
 
   if (isEdit) {
@@ -460,6 +544,213 @@ function saveFarmer(e) {
   closeModal('modalFarmer');
   refreshAll();
   showToast(isEdit ? 'Data petani berhasil diperbarui' : 'Petani berhasil ditambahkan', 'success');
+}
+
+// ============================================================
+//  INLINE ROW BUILDERS (Lahan / Tanaman / Produksi dalam form)
+// ============================================================
+
+/**
+ * Update label jumlah baris di tiap section
+ */
+function updateRowCounts() {
+  const lc = document.querySelectorAll('#lahanFormList .inline-form-row').length;
+  const tc = document.querySelectorAll('#tanamanFormList .inline-form-row').length;
+  const pc = document.querySelectorAll('#produksiFormList .inline-form-row').length;
+  const lel = document.getElementById('lahanFormCount');
+  const tel = document.getElementById('tanamanFormCount');
+  const pel = document.getElementById('produksiFormCount');
+  if (lel) lel.textContent = lc ? `(${lc})` : '';
+  if (tel) tel.textContent = tc ? `(${tc})` : '';
+  if (pel) pel.textContent = pc ? `(${pc})` : '';
+}
+
+/**
+ * Tambah baris lahan ke form
+ * @param {object} data - data lahan existing (opsional, untuk edit)
+ */
+function addLahanRow(data = {}) {
+  const list = document.getElementById('lahanFormList');
+  const idx = list.querySelectorAll('.inline-form-row').length + 1;
+  const div = document.createElement('div');
+  div.className = 'inline-form-row';
+  div.dataset.id = data.id || '';
+  div.innerHTML = `
+    <div class="row-number">
+      🗺️ Lahan #${idx}
+      <button type="button" class="btn-remove-row" onclick="removeRow(this)">✕ Hapus</button>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Nama Lahan <span class="required">*</span></label>
+        <input type="text" class="form-control lahan-nama" value="${data.nama||''}" placeholder="contoh: Kebun Kopi Utara" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Luas (Ha)</label>
+        <input type="number" class="form-control lahan-luas" value="${data.luas||''}" step="0.01" placeholder="0.00" />
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Status Kepemilikan</label>
+        <select class="form-control lahan-status">
+          ${['Milik Sendiri','Sewa','Garapan','Hibah'].map(s=>`<option ${data.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jenis Lahan</label>
+        <select class="form-control lahan-jenis">
+          ${['Sawah','Kebun','Ladang','Pekarangan','Tegalan'].map(s=>`<option ${data.jenis===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Latitude</label>
+        <input type="number" class="form-control lahan-lat" value="${data.lat||''}" step="0.000001" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Longitude</label>
+        <input type="number" class="form-control lahan-lng" value="${data.lng||''}" step="0.000001" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Catatan</label>
+      <input type="text" class="form-control lahan-catatan" value="${data.catatan||''}" placeholder="Keterangan tambahan (opsional)" />
+    </div>
+  `;
+  list.appendChild(div);
+  updateRowCounts();
+}
+
+/**
+ * Tambah baris tanaman ke form
+ */
+function addTanamanRow(data = {}) {
+  const list = document.getElementById('tanamanFormList');
+  const idx = list.querySelectorAll('.inline-form-row').length + 1;
+  const statusOpts = ['Baik','Perawatan','Terserang Hama','Siap Panen'];
+  const div = document.createElement('div');
+  div.className = 'inline-form-row';
+  div.dataset.id = data.id || '';
+  div.innerHTML = `
+    <div class="row-number">
+      🌱 Tanaman #${idx}
+      <button type="button" class="btn-remove-row" onclick="removeRow(this)">✕ Hapus</button>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Jenis Tanaman <span class="required">*</span></label>
+        <input type="text" class="form-control tanaman-jenis" value="${data.jenis||''}" placeholder="contoh: Kopi Arabika" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Luas Tanam (Ha)</label>
+        <input type="number" class="form-control tanaman-luas" value="${data.luasTanam||''}" step="0.01" placeholder="0.00" />
+      </div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="form-group">
+        <label class="form-label">Umur (Bulan)</label>
+        <input type="number" class="form-control tanaman-umur" value="${data.umurTanaman||''}" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-control tanaman-status">
+          ${statusOpts.map(s=>`<option ${data.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Perkiraan Panen</label>
+        <input type="date" class="form-control tanaman-panen" value="${data.perkiraanPanen||''}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Catatan Kondisi</label>
+      <input type="text" class="form-control tanaman-catatan" value="${data.catatan||''}" placeholder="Keterangan tambahan (opsional)" />
+    </div>
+  `;
+  list.appendChild(div);
+  updateRowCounts();
+}
+
+/**
+ * Tambah baris produksi ke form
+ */
+function addProduksiRow(data = {}) {
+  const list = document.getElementById('produksiFormList');
+  const idx = list.querySelectorAll('.inline-form-row').length + 1;
+  const div = document.createElement('div');
+  div.className = 'inline-form-row';
+  div.dataset.id = data.id || '';
+  div.innerHTML = `
+    <div class="row-number">
+      📦 Produksi #${idx}
+      <button type="button" class="btn-remove-row" onclick="removeRow(this)">✕ Hapus</button>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Komoditas <span class="required">*</span></label>
+        <input type="text" class="form-control prod-komoditas" value="${data.komoditas||''}" placeholder="contoh: Kopi Arabika" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tahun</label>
+        <input type="number" class="form-control prod-tahun" value="${data.tahun||new Date().getFullYear()}" />
+      </div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="form-group">
+        <label class="form-label">Musim Tanam</label>
+        <select class="form-control prod-musim">
+          ${['Tanam I','Tanam II','Tanam III'].map(s=>`<option ${data.musim===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jumlah</label>
+        <input type="number" class="form-control prod-jumlah" value="${data.jumlah||''}" step="0.01" oninput="calcTotalRow(this)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Satuan</label>
+        <select class="form-control prod-satuan">
+          ${['Kg','Ton','Ikat','Karung'].map(s=>`<option ${data.satuan===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Harga/Satuan (Rp)</label>
+        <input type="number" class="form-control prod-harga" value="${data.harga||''}" oninput="calcTotalRow(this)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Pendapatan (Rp)</label>
+        <input type="number" class="form-control prod-total" value="${data.total||''}" readonly style="background:var(--gray-50)" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pembeli/Pasar</label>
+      <input type="text" class="form-control prod-pembeli" value="${data.pembeli||''}" placeholder="contoh: Koperasi Kopi Manggarai" />
+    </div>
+  `;
+  list.appendChild(div);
+  updateRowCounts();
+}
+
+/**
+ * Hitung total produksi otomatis per baris
+ */
+function calcTotalRow(input) {
+  const row = input.closest('.inline-form-row');
+  const jumlah = parseFloat(row.querySelector('.prod-jumlah')?.value) || 0;
+  const harga = parseFloat(row.querySelector('.prod-harga')?.value) || 0;
+  const totalEl = row.querySelector('.prod-total');
+  if (totalEl) totalEl.value = jumlah * harga;
+}
+
+/**
+ * Hapus satu baris inline
+ */
+function removeRow(btn) {
+  btn.closest('.inline-form-row').remove();
+  updateRowCounts();
 }
 
 function confirmDeleteFarmer(id) {
