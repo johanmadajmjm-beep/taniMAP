@@ -473,12 +473,40 @@
             <i class="fas fa-location-arrow"></i> Ambil GPS
           </button>
         </div>
+
+        <!-- ===== SECTION: LAHAN ===== -->
+        <div style="margin-top:24px">
+          <div class="section-title">🗺️ Data Lahan <span id="lahanFormCount" style="font-size:11px;color:var(--gray-400);font-weight:400;margin-left:4px"></span></div>
+          <div id="lahanFormList"></div>
+          <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addLahanRow()">
+            <i class="fas fa-plus"></i> Tambah Lahan
+          </button>
+        </div>
+
+        <!-- ===== SECTION: TANAMAN ===== -->
+        <div style="margin-top:24px">
+          <div class="section-title">🌱 Data Tanaman <span id="tanamanFormCount" style="font-size:11px;color:var(--gray-400);font-weight:400;margin-left:4px"></span></div>
+          <div id="tanamanFormList"></div>
+          <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addTanamanRow()">
+            <i class="fas fa-plus"></i> Tambah Tanaman
+          </button>
+        </div>
+
+        <!-- ===== SECTION: PRODUKSI ===== -->
+        <div style="margin-top:24px">
+          <div class="section-title">📦 Data Produksi <span id="produksiFormCount" style="font-size:11px;color:var(--gray-400);font-weight:400;margin-left:4px"></span></div>
+          <div id="produksiFormList"></div>
+          <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addProduksiRow()">
+            <i class="fas fa-plus"></i> Tambah Produksi
+          </button>
+        </div>
+
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modalFarmer')">Batal</button>
       <button class="btn btn-primary" onclick="document.getElementById('farmerForm').dispatchEvent(new Event('submit'))">
-        <i class="fas fa-save"></i> Simpan
+        <i class="fas fa-save"></i> Simpan Semua
       </button>
     </div>
   </div>
