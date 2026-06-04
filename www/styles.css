@@ -1174,3 +1174,27 @@ tbody td {
     justify-content: center;
   }
 }
+.hero-stats{
+    display:flex;
+    gap:16px;
+    margin-top:20px;
+}
+
+.hero-stat{
+    background:rgba(255,255,255,.12);
+    padding:12px 18px;
+    border-radius:16px;
+    backdrop-filter:blur(8px);
+}
+
+.hero-stat-value{
+    display:block;
+    font-size:24px;
+    font-weight:800;
+    color:white;
+}
+
+.hero-stat-label{
+    font-size:12px;
+    color:rgba(255,255,255,.8);
+}
