@@ -1189,6 +1189,246 @@ function renderReports() {
 //  EXPORT / IMPORT
 // ============================================================
 
+/**
+ * Export ke Excel (.xlsx) — multi sheet:
+ * Sheet 1: Data Petani
+ * Sheet 2: Data Lahan
+ * Sheet 3: Data Tanaman
+ * Sheet 4: Kunjungan
+ * Sheet 5: Produksi
+ * Sheet 6: Hama & Penyakit
+ */
+function exportExcel() {
+  if (typeof XLSX === 'undefined') { showToast('Library Excel belum siap', 'error'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const tgl = new Date().toLocaleDateString('id-ID');
+
+  // ---- Sheet 1: Data Petani ----
+  const petaniData = [
+    ['ID','Nama','HP','Jenis Kelamin','Umur','Desa','Kecamatan','Kabupaten','Alamat','Kelompok Tani','Komoditas','Total Lahan (Ha)','Latitude','Longitude','Tgl Input']
+  ];
+  farmers.forEach(f => {
+    petaniData.push([
+      f.id, f.nama, f.hp, f.jenisKelamin, f.umur,
+      f.desa, f.kecamatan, f.kabupaten, f.alamat, f.kelompokTani, f.komoditas,
+      (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
+      f.lat, f.lng, f.tanggalInput
+    ]);
+  });
+  const wsPetani = XLSX.utils.aoa_to_sheet(petaniData);
+  // Lebar kolom
+  wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsPetani, 'Data Petani');
+
+  // ---- Sheet 2: Data Lahan ----
+  const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan']];
+  farmers.forEach(f => (f.lahan||[]).forEach(l => {
+    lahanData.push([l.id, f.nama, l.nama, l.luas, l.status, l.jenis, l.lat, l.lng, l.catatan]);
+  }));
+  const wsLahan = XLSX.utils.aoa_to_sheet(lahanData);
+  wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsLahan, 'Data Lahan');
+
+  // ---- Sheet 3: Data Tanaman ----
+  const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan']];
+  farmers.forEach(f => (f.tanaman||[]).forEach(t => {
+    tanamanData.push([t.id, f.nama, f.desa, t.jenis, t.luasTanam, t.umurTanaman, t.status, t.perkiraanPanen, t.catatan]);
+  }));
+  const wsTanaman = XLSX.utils.aoa_to_sheet(tanamanData);
+  wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsTanaman, 'Data Tanaman');
+
+  // ---- Sheet 4: Kunjungan ----
+  const kunjunganData = [['ID','Nama Petani','Desa','Tanggal','Petugas','Kondisi','Masalah','Rekomendasi','Catatan']];
+  farmers.forEach(f => (f.kunjungan||[]).forEach(k => {
+    kunjunganData.push([k.id, f.nama, f.desa, k.tanggal, k.petugas, k.kondisi, k.masalah, k.rekomendasi, k.catatan]);
+  }));
+  const wsKunjungan = XLSX.utils.aoa_to_sheet(kunjunganData);
+  wsKunjungan['!cols'] = [10,20,14,12,16,10,24,24,24].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsKunjungan, 'Kunjungan');
+
+  // ---- Sheet 5: Produksi ----
+  const produksiData = [['ID','Nama Petani','Desa','Tahun','Musim','Komoditas','Jumlah','Satuan','Harga/Satuan (Rp)','Total (Rp)','Pembeli','Catatan']];
+  farmers.forEach(f => (f.produksi||[]).forEach(p => {
+    produksiData.push([p.id, f.nama, f.desa, p.tahun, p.musim, p.komoditas, p.jumlah, p.satuan, p.harga, p.total, p.pembeli, p.catatan]);
+  }));
+  const wsProduksi = XLSX.utils.aoa_to_sheet(produksiData);
+  wsProduksi['!cols'] = [10,20,14,8,10,14,8,8,14,16,18,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsProduksi, 'Produksi');
+
+  // ---- Sheet 6: Hama & Penyakit ----
+  const hamaData = [['ID','Nama Petani','Desa','Nama Hama/Penyakit','Tanaman','Tingkat','Solusi','Status']];
+  farmers.forEach(f => (f.hama||[]).forEach(h => {
+    hamaData.push([h.id, f.nama, f.desa, h.nama, h.tanaman, h.tingkat, h.solusi, h.status]);
+  }));
+  const wsHama = XLSX.utils.aoa_to_sheet(hamaData);
+  wsHama['!cols'] = [10,20,14,20,14,10,28,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
+
+  // Simpan file
+  XLSX.writeFile(wb, `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`);
+  showToast('Excel berhasil diexport (6 sheet)', 'success');
+}
+
+/**
+ * Export ke PDF — berisi semua rekap laporan
+ */
+function exportPDF() {
+  if (typeof window.jspdf === 'undefined') { showToast('Library PDF belum siap', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const tgl = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 0; // posisi Y berjalan
+
+  // ---- Header ----
+  doc.setFillColor(45, 106, 53); // hijau
+  doc.rect(0, 0, pageW, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('TANIMAP', 14, 13);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani', 14, 20);
+  doc.text(`Dicetak: ${tgl}`, 14, 26);
+
+  // Statistik ringkasan di header kanan
+  doc.setFontSize(9);
+  doc.text(`Total Petani: ${farmers.length}`, pageW-50, 13);
+  const totalLahan = farmers.reduce((s,f)=>s+(f.lahan||[]).reduce((a,l)=>a+(parseFloat(l.luas)||0),0),0);
+  doc.text(`Total Lahan: ${totalLahan.toFixed(2)} Ha`, pageW-50, 20);
+  const totalProd = farmers.reduce((s,f)=>s+(f.produksi||[]).reduce((a,p)=>a+(parseFloat(p.total)||0),0),0);
+  doc.text(`Total Pendapatan: Rp ${formatNumber(totalProd)}`, pageW-50, 26);
+
+  doc.setTextColor(0, 0, 0);
+  y = 38;
+
+  // ---- Fungsi helper judul section ----
+  function sectionTitle(title, icon='') {
+    // Cek apakah perlu halaman baru
+    if (y > 250) { doc.addPage(); y = 16; }
+    doc.setFillColor(232, 245, 233);
+    doc.rect(10, y-4, pageW-20, 8, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.setTextColor(45, 106, 53);
+    doc.text(`${icon} ${title}`, 13, y+1);
+    doc.setTextColor(0,0,0);
+    y += 8;
+  }
+
+  // ---- 1. Rekap Petani per Desa ----
+  sectionTitle('REKAP PETANI PER DESA', '📍');
+  const byVillage = {};
+  farmers.forEach(f => {
+    if (!byVillage[f.desa]) byVillage[f.desa] = { count:0, lahan:0, komoditas: new Set() };
+    byVillage[f.desa].count++;
+    byVillage[f.desa].lahan += (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0);
+    byVillage[f.desa].komoditas.add(f.komoditas);
+  });
+  doc.autoTable({
+    startY: y,
+    head: [['No','Desa','Jumlah Petani','Total Lahan (Ha)','Komoditas']],
+    body: Object.entries(byVillage).map(([desa,d], i) => [
+      i+1, desa, d.count, d.lahan.toFixed(2), [...d.komoditas].join(', ')
+    ]),
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245,250,245] },
+    margin: { left:10, right:10 },
+    didDrawPage: (data) => { y = data.cursor.y + 6; }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ---- 2. Rekap per Komoditas ----
+  sectionTitle('REKAP PER KOMODITAS', '🌾');
+  const byComm = {};
+  farmers.forEach(f => {
+    if (!byComm[f.komoditas]) byComm[f.komoditas] = { count:0, produksi:0, pendapatan:0 };
+    byComm[f.komoditas].count++;
+    byComm[f.komoditas].produksi += (f.produksi||[]).reduce((s,p)=>s+(parseFloat(p.jumlah)||0),0);
+    byComm[f.komoditas].pendapatan += (f.produksi||[]).reduce((s,p)=>s+(parseFloat(p.total)||0),0);
+  });
+  doc.autoTable({
+    startY: y,
+    head: [['No','Komoditas','Jumlah Petani','Total Produksi','Total Pendapatan (Rp)']],
+    body: Object.entries(byComm).map(([k,d], i) => [
+      i+1, k, d.count,
+      d.produksi > 0 ? d.produksi.toFixed(2) : '-',
+      d.pendapatan > 0 ? formatNumber(d.pendapatan) : '-'
+    ]),
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245,250,245] },
+    margin: { left:10, right:10 },
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ---- 3. Data Produksi ----
+  let allProduksi = [];
+  farmers.forEach(f => (f.produksi||[]).forEach(p => allProduksi.push({...p, farmerName:f.nama, desa:f.desa})));
+  if (allProduksi.length) {
+    sectionTitle('REKAP PRODUKSI', '📦');
+    doc.autoTable({
+      startY: y,
+      head: [['Petani','Desa','Tahun','Komoditas','Jumlah','Satuan','Total (Rp)','Pembeli']],
+      body: allProduksi.map(p => [p.farmerName, p.desa, p.tahun, p.komoditas, p.jumlah, p.satuan, formatNumber(p.total), p.pembeli||'-']),
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245,250,245] },
+      margin: { left:10, right:10 },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ---- 4. Hama & Penyakit ----
+  let allHama = [];
+  farmers.forEach(f => (f.hama||[]).forEach(h => allHama.push({...h, farmerName:f.nama, desa:f.desa})));
+  if (allHama.length) {
+    sectionTitle('REKAP HAMA & PENYAKIT', '🐛');
+    doc.autoTable({
+      startY: y,
+      head: [['Petani','Desa','Hama/Penyakit','Tanaman','Tingkat','Status']],
+      body: allHama.map(h => [h.farmerName, h.desa, h.nama, h.tanaman, h.tingkat, h.status]),
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [255,245,245] },
+      margin: { left:10, right:10 },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ---- 5. Daftar Lengkap Petani ----
+  sectionTitle('DAFTAR LENGKAP PETANI', '👨‍🌾');
+  doc.autoTable({
+    startY: y,
+    head: [['No','Nama','HP','Desa','Kecamatan','Komoditas','Lahan (Ha)','Tgl Input']],
+    body: farmers.map((f,i) => [
+      i+1, f.nama, f.hp||'-', f.desa, f.kecamatan, f.komoditas,
+      (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
+      f.tanggalInput||'-'
+    ]),
+    styles: { fontSize: 8, cellPadding: 2.5 },
+    headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245,250,245] },
+    margin: { left:10, right:10 },
+  });
+
+  // ---- Footer tiap halaman ----
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setTextColor(150,150,150);
+    doc.text(`TaniMap — Sistem Informasi Petani | Halaman ${i} dari ${pageCount}`, pageW/2, 292, { align:'center' });
+    doc.setDrawColor(200,200,200);
+    doc.line(10, 289, pageW-10, 289);
+  }
+
+  const namaFile = `TaniMap_Laporan_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`;
+  doc.save(namaFile);
+  showToast('PDF berhasil diexport', 'success');
+}
+
 function exportCSV() {
   const headers = ['ID','Nama','HP','JK','Umur','Desa','Kecamatan','Kabupaten','Alamat','Kelompok Tani','Komoditas','Lahan (Ha)','Lat','Lng','Tgl Input'];
   const rows = farmers.map(f => [
