@@ -1053,6 +1053,66 @@ function printKartu() {
   printWin.focus();
 }
 
+// ============================================================
+//  UNDUH FOTO
+// ============================================================
+
+/**
+ * Bersihkan nama untuk filename: spasi → underscore, hapus karakter spesial
+ */
+function cleanFileName(str) {
+  return (str || '').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
+}
+
+/**
+ * Unduh foto petani → "Nama_Petani.jpg"
+ */
+function unduhFoto(farmerId, type) {
+  const f = farmers.find(x => x.id === farmerId);
+  if (!f || !f.foto) { showToast('Tidak ada foto', 'error'); return; }
+  const nama = cleanFileName(f.nama);
+  _triggerDownload(f.foto, `${nama}.jpg`);
+  showToast(`Foto disimpan: ${nama}.jpg`, 'success');
+}
+
+/**
+ * Unduh foto lahan → "Nama_Petani_lahan_Nama_Lahan.jpg"
+ */
+function unduhFotoLahan(farmerNama, lahanNama) {
+  const f = farmers.find(x => x.nama === farmerNama);
+  const l = (f?.lahan||[]).find(x => x.nama === lahanNama);
+  if (!l || !l.foto) { showToast('Tidak ada foto lahan', 'error'); return; }
+  const nama = cleanFileName(farmerNama);
+  const lahan = cleanFileName(lahanNama);
+  const filename = `${nama}_lahan_${lahan}.jpg`;
+  _triggerDownload(l.foto, filename);
+  showToast(`Foto disimpan: ${filename}`, 'success');
+}
+
+/**
+ * Unduh foto tanaman → "Nama_Petani_Nama_Tanaman.jpg"
+ */
+function unduhFotoTanaman(farmerNama, tanamanJenis) {
+  const f = farmers.find(x => x.nama === farmerNama);
+  const t = (f?.tanaman||[]).find(x => x.jenis === tanamanJenis);
+  if (!t || !t.foto) { showToast('Tidak ada foto tanaman', 'error'); return; }
+  const nama = cleanFileName(farmerNama);
+  const tanaman = cleanFileName(tanamanJenis);
+  const filename = `${nama}_${tanaman}.jpg`;
+  _triggerDownload(t.foto, filename);
+  showToast(`Foto disimpan: ${filename}`, 'success');
+}
+
+/**
+ * Trigger download dari base64 data URL
+ */
+function _triggerDownload(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
 function confirmDeleteFarmer(id) {
   const f = farmers.find(x => x.id === id);
   showConfirm('🗑️', 'Hapus Petani', `Hapus data <strong>${f?.nama}</strong>? Tindakan ini tidak bisa dibatalkan.`, () => {
@@ -1081,8 +1141,18 @@ function openDetail(id) {
   if (!f) return;
 
   const totalLahan = (f.lahan || []).reduce((s, l) => s + (parseFloat(l.luas) || 0), 0);
+  const namaFile = f.nama.replace(/\s+/g, '_');
   const avatarHtml = f.foto
-    ? `<div class="detail-avatar"><img src="${f.foto}" alt="${f.nama}" /></div>`
+    ? `<div class="detail-avatar" style="position:relative">
+        <img src="${f.foto}" alt="${f.nama}" />
+        <button onclick="unduhFoto('${f.id}','petani')" title="Unduh foto" style="
+          position:absolute;bottom:4px;right:4px;
+          background:rgba(0,0,0,.6);color:#fff;border:none;
+          border-radius:50%;width:26px;height:26px;font-size:12px;
+          cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <i class='fas fa-download'></i>
+        </button>
+       </div>`
     : `<div class="detail-avatar">👨‍🌾</div>`;
 
   const html = `
@@ -1148,6 +1218,17 @@ function openDetail(id) {
             <div><div class="info-key">Koordinat</div><div class="info-value">${l.lat ? l.lat+', '+l.lng : '-'}</div></div>
           </div>
           ${l.catatan ? `<div class="item-meta">${l.catatan}</div>` : ''}
+          ${l.foto ? `
+            <div style="margin-top:8px;position:relative;display:inline-block">
+              <img src="${l.foto}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--gray-200)" />
+              <button onclick="unduhFotoLahan('${f.nama}','${l.nama}')" title="Unduh foto lahan" style="
+                position:absolute;bottom:6px;right:6px;
+                background:rgba(0,0,0,.6);color:#fff;border:none;
+                border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;gap:4px">
+                <i class='fas fa-download'></i> Unduh
+              </button>
+            </div>` : ''}
         </div>
       `).join('') : '<div class="empty-state"><div class="empty-icon">🗺️</div><p>Belum ada data lahan.</p></div>'}
     </div>
@@ -1173,6 +1254,17 @@ function openDetail(id) {
             <div><div class="info-key">Perkiraan Panen</div><div class="info-value">${t.perkiraanPanen || '-'}</div></div>
           </div>
           ${t.catatan ? `<div class="item-meta">${t.catatan}</div>` : ''}
+          ${t.foto ? `
+            <div style="margin-top:8px;position:relative;display:inline-block">
+              <img src="${t.foto}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--gray-200)" />
+              <button onclick="unduhFotoTanaman('${f.nama}','${t.jenis}')" title="Unduh foto tanaman" style="
+                position:absolute;bottom:6px;right:6px;
+                background:rgba(0,0,0,.6);color:#fff;border:none;
+                border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;gap:4px">
+                <i class='fas fa-download'></i> Unduh
+              </button>
+            </div>` : ''}
         </div>
       `).join('') : '<div class="empty-state"><div class="empty-icon">🌱</div><p>Belum ada data tanaman.</p></div>'}
     </div>
