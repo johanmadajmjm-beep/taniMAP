@@ -1490,9 +1490,14 @@ function renderReports() {
  * Sheet 6: Hama & Penyakit
  */
 function exportExcel() {
-  if (typeof XLSX === 'undefined') { showToast('Library Excel belum siap', 'error'); return; }
+  // SheetJS bisa terdaftar sebagai XLSX di window
+  const XLSXlib = window.XLSX;
+  if (!XLSXlib) {
+    showToast('Library Excel belum termuat. Coba refresh halaman.', 'error');
+    return;
+  }
 
-  const wb = XLSX.utils.book_new();
+  const wb = XLSXlib.utils.book_new();
   const tgl = new Date().toLocaleDateString('id-ID');
 
   // ---- Sheet 1: Data Petani ----
@@ -1507,58 +1512,58 @@ function exportExcel() {
       f.lat, f.lng, f.tanggalInput
     ]);
   });
-  const wsPetani = XLSX.utils.aoa_to_sheet(petaniData);
+  const wsPetani = XLSXlib.utils.aoa_to_sheet(petaniData);
   // Lebar kolom
   wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsPetani, 'Data Petani');
+  XLSXlib.utils.book_append_sheet(wb, wsPetani, 'Data Petani');
 
   // ---- Sheet 2: Data Lahan ----
   const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan']];
   farmers.forEach(f => (f.lahan||[]).forEach(l => {
     lahanData.push([l.id, f.nama, l.nama, l.luas, l.status, l.jenis, l.lat, l.lng, l.catatan]);
   }));
-  const wsLahan = XLSX.utils.aoa_to_sheet(lahanData);
+  const wsLahan = XLSXlib.utils.aoa_to_sheet(lahanData);
   wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsLahan, 'Data Lahan');
+  XLSXlib.utils.book_append_sheet(wb, wsLahan, 'Data Lahan');
 
   // ---- Sheet 3: Data Tanaman ----
   const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan']];
   farmers.forEach(f => (f.tanaman||[]).forEach(t => {
     tanamanData.push([t.id, f.nama, f.desa, t.jenis, t.luasTanam, t.umurTanaman, t.status, t.perkiraanPanen, t.catatan]);
   }));
-  const wsTanaman = XLSX.utils.aoa_to_sheet(tanamanData);
+  const wsTanaman = XLSXlib.utils.aoa_to_sheet(tanamanData);
   wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsTanaman, 'Data Tanaman');
+  XLSXlib.utils.book_append_sheet(wb, wsTanaman, 'Data Tanaman');
 
   // ---- Sheet 4: Kunjungan ----
   const kunjunganData = [['ID','Nama Petani','Desa','Tanggal','Petugas','Kondisi','Masalah','Rekomendasi','Catatan']];
   farmers.forEach(f => (f.kunjungan||[]).forEach(k => {
     kunjunganData.push([k.id, f.nama, f.desa, k.tanggal, k.petugas, k.kondisi, k.masalah, k.rekomendasi, k.catatan]);
   }));
-  const wsKunjungan = XLSX.utils.aoa_to_sheet(kunjunganData);
+  const wsKunjungan = XLSXlib.utils.aoa_to_sheet(kunjunganData);
   wsKunjungan['!cols'] = [10,20,14,12,16,10,24,24,24].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsKunjungan, 'Kunjungan');
+  XLSXlib.utils.book_append_sheet(wb, wsKunjungan, 'Kunjungan');
 
   // ---- Sheet 5: Produksi ----
   const produksiData = [['ID','Nama Petani','Desa','Tahun','Musim','Komoditas','Jumlah','Satuan','Harga/Satuan (Rp)','Total (Rp)','Pembeli','Catatan']];
   farmers.forEach(f => (f.produksi||[]).forEach(p => {
     produksiData.push([p.id, f.nama, f.desa, p.tahun, p.musim, p.komoditas, p.jumlah, p.satuan, p.harga, p.total, p.pembeli, p.catatan]);
   }));
-  const wsProduksi = XLSX.utils.aoa_to_sheet(produksiData);
+  const wsProduksi = XLSXlib.utils.aoa_to_sheet(produksiData);
   wsProduksi['!cols'] = [10,20,14,8,10,14,8,8,14,16,18,20].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsProduksi, 'Produksi');
+  XLSXlib.utils.book_append_sheet(wb, wsProduksi, 'Produksi');
 
   // ---- Sheet 6: Hama & Penyakit ----
   const hamaData = [['ID','Nama Petani','Desa','Nama Hama/Penyakit','Tanaman','Tingkat','Solusi','Status']];
   farmers.forEach(f => (f.hama||[]).forEach(h => {
     hamaData.push([h.id, f.nama, f.desa, h.nama, h.tanaman, h.tingkat, h.solusi, h.status]);
   }));
-  const wsHama = XLSX.utils.aoa_to_sheet(hamaData);
+  const wsHama = XLSXlib.utils.aoa_to_sheet(hamaData);
   wsHama['!cols'] = [10,20,14,20,14,10,28,16].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
+  XLSXlib.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
 
   // Simpan file
-  XLSX.writeFile(wb, `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`);
+  XLSXlib.writeFile(wb, `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`);
   showToast('Excel berhasil diexport (6 sheet)', 'success');
 }
 
@@ -1566,10 +1571,14 @@ function exportExcel() {
  * Export ke PDF — berisi semua rekap laporan
  */
 function exportPDF() {
-  if (typeof window.jspdf === 'undefined') { showToast('Library PDF belum siap', 'error'); return; }
+  // jsPDF bisa terdaftar di beberapa nama global tergantung versi CDN
+  const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
+  if (!jsPDFLib) {
+    showToast('Library PDF belum termuat. Coba refresh halaman.', 'error');
+    return;
+  }
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const tgl = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
   const pageW = doc.internal.pageSize.getWidth();
   let y = 0; // posisi Y berjalan
