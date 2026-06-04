@@ -1729,44 +1729,6 @@ function exportPDF() {
   showToast('PDF berhasil diexport', 'success');
 }
 
-function exportCSV() {
-  const headers = ['ID','Nama','HP','JK','Umur','Desa','Kecamatan','Kabupaten','Alamat','Kelompok Tani','Komoditas','Lahan (Ha)','Lat','Lng','Tgl Input'];
-  const rows = farmers.map(f => [
-    f.id, f.nama, f.hp, f.jenisKelamin, f.umur,
-    f.desa, f.kecamatan, f.kabupaten, f.alamat, f.kelompokTani, f.komoditas,
-    (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
-    f.lat, f.lng, f.tanggalInput
-  ]);
-  const csv = [headers, ...rows].map(r => r.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
-  downloadFile('tanimap_petani.csv', 'text/csv;charset=utf-8;', csv);
-  showToast('CSV berhasil diexport', 'success');
-}
-
-function exportJSON() {
-  const json = JSON.stringify(farmers, null, 2);
-  downloadFile('tanimap_data.json', 'application/json', json);
-  showToast('JSON berhasil diexport', 'success');
-}
-
-function importJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (!Array.isArray(data)) throw new Error('Format tidak valid');
-      showConfirm('📥', 'Import Data', `Import ${data.length} data petani? Data saat ini akan diganti.`, () => {
-        farmers = data;
-        saveToStorage(); refreshAll();
-        showToast(`${data.length} data petani berhasil diimport`, 'success');
-      });
-    } catch { showToast('File JSON tidak valid', 'error'); }
-  };
-  reader.readAsText(file);
-  event.target.value = ''; // reset
-}
-
 function downloadFile(filename, mime, content) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
