@@ -142,19 +142,13 @@
             <div class="chart-canvas-wrap"><canvas id="chartVillage"></canvas></div>
           </div>
 
-          <div class="card">
+          <div class="card dashboard-map-card">
             <div class="card-header">
               <div class="card-title">🗺️ Peta Sebaran Petani</div>
               <button class="btn btn-outline btn-sm" onclick="navigate('map')">Buka Peta</button>
             </div>
             <div class="card-body">
-              <div style="min-height:230px;border-radius:18px;background:linear-gradient(135deg,#dcfce7,#f0fdf4);display:flex;align-items:center;justify-content:center;text-align:center;padding:22px;border:1px solid #bbf7d0">
-                <div>
-                  <div style="font-size:44px;margin-bottom:10px">🗺️</div>
-                  <div style="font-weight:800;font-size:16px;color:#14532d;margin-bottom:6px">Sebaran Wilayah Petani</div>
-                  <div style="font-size:13px;color:#64748b;max-width:260px">Buka peta interaktif untuk melihat marker petani, lokasi lahan, dan rute Google Maps.</div>
-                </div>
-              </div>
+              <div id="dashboardMiniMap" class="dashboard-mini-map"></div>
             </div>
           </div>
 
