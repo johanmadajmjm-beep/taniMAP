@@ -1674,7 +1674,6 @@ function exportExcel() {
  * Export ke PDF — berisi semua rekap laporan
  */
 function exportPDF() {
-  // jsPDF bisa terdaftar di beberapa nama global tergantung versi CDN
   const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
   if (!jsPDFLib) {
     showToast('Library PDF belum termuat. Coba refresh halaman.', 'error');
@@ -1684,49 +1683,45 @@ function exportPDF() {
   const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const tgl = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
   const pageW = doc.internal.pageSize.getWidth();
-  let y = 0; // posisi Y berjalan
+  let y = 0;
+
+  // ---- Helper judul section (tanpa emoji) ----
+  function sectionTitle(title) {
+    if (y > 250) { doc.addPage(); y = 16; }
+    doc.setFillColor(232, 245, 233);
+    doc.rect(10, y - 4, pageW - 20, 8, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(45, 106, 53);
+    doc.text(title, 13, y + 1);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  }
 
   // ---- Header ----
-  doc.setFillColor(45, 106, 53); // hijau
+  doc.setFillColor(45, 106, 53);
   doc.rect(0, 0, pageW, 30, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
   doc.text('TANIMAP', 14, 13);
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
   doc.text('Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani', 14, 20);
-  doc.text(`Dicetak: ${tgl}`, 14, 26);
+  doc.text('Dicetak: ' + tgl, 14, 26);
 
-  // Statistik ringkasan di header kanan
-  doc.setFontSize(9);
-  doc.text(`Total Petani: ${farmers.length}`, pageW-50, 13);
-  const totalLahan = farmers.reduce((s,f)=>s+(f.lahan||[]).reduce((a,l)=>a+(parseFloat(l.luas)||0),0),0);
-  doc.text(`Total Lahan: ${totalLahan.toFixed(2)} Ha`, pageW-50, 20);
-  const totalProd = farmers.reduce((s,f)=>s+(f.produksi||[]).reduce((a,p)=>a+(parseFloat(p.total)||0),0),0);
-  doc.text(`Total Pendapatan: Rp ${formatNumber(totalProd)}`, pageW-50, 26);
-
+  const totalLahan = farmers.reduce((s,f) => s + (f.lahan||[]).reduce((a,l) => a + (parseFloat(l.luas)||0), 0), 0);
+  const totalProd  = farmers.reduce((s,f) => s + (f.produksi||[]).reduce((a,p) => a + (parseFloat(p.total)||0), 0), 0);
+  doc.text('Total Petani: ' + farmers.length, pageW - 55, 13);
+  doc.text('Total Lahan: ' + totalLahan.toFixed(2) + ' Ha', pageW - 55, 20);
+  doc.text('Total Pendapatan: Rp ' + formatNumber(totalProd), pageW - 55, 26);
   doc.setTextColor(0, 0, 0);
   y = 38;
 
-  // ---- Fungsi helper judul section ----
-  function sectionTitle(title, icon='') {
-    // Cek apakah perlu halaman baru
-    if (y > 250) { doc.addPage(); y = 16; }
-    doc.setFillColor(232, 245, 233);
-    doc.rect(10, y-4, pageW-20, 8, 'F');
-    doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.setTextColor(45, 106, 53);
-    doc.text(`${icon} ${title}`, 13, y+1);
-    doc.setTextColor(0,0,0);
-    y += 8;
-  }
-
   // ---- 1. Rekap Petani per Desa ----
-  sectionTitle('REKAP PETANI PER DESA', '📍');
+  sectionTitle('REKAP PETANI PER DESA');
   const byVillage = {};
   farmers.forEach(f => {
-    if (!byVillage[f.desa]) byVillage[f.desa] = { count:0, lahan:0, komoditas: new Set() };
+    if (!byVillage[f.desa]) byVillage[f.desa] = { count: 0, lahan: 0, komoditas: new Set() };
     byVillage[f.desa].count++;
-    byVillage[f.desa].lahan += (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0);
+    byVillage[f.desa].lahan += (f.lahan||[]).reduce((s,l) => s + (parseFloat(l.luas)||0), 0);
     byVillage[f.desa].komoditas.add(f.komoditas);
   });
   doc.autoTable({
@@ -1738,19 +1733,18 @@ function exportPDF() {
     styles: { fontSize: 9, cellPadding: 3 },
     headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245,250,245] },
-    margin: { left:10, right:10 },
-    didDrawPage: (data) => { y = data.cursor.y + 6; }
+    margin: { left: 10, right: 10 },
   });
   y = doc.lastAutoTable.finalY + 10;
 
   // ---- 2. Rekap per Komoditas ----
-  sectionTitle('REKAP PER KOMODITAS', '🌾');
+  sectionTitle('REKAP PER KOMODITAS');
   const byComm = {};
   farmers.forEach(f => {
-    if (!byComm[f.komoditas]) byComm[f.komoditas] = { count:0, produksi:0, pendapatan:0 };
+    if (!byComm[f.komoditas]) byComm[f.komoditas] = { count: 0, produksi: 0, pendapatan: 0 };
     byComm[f.komoditas].count++;
-    byComm[f.komoditas].produksi += (f.produksi||[]).reduce((s,p)=>s+(parseFloat(p.jumlah)||0),0);
-    byComm[f.komoditas].pendapatan += (f.produksi||[]).reduce((s,p)=>s+(parseFloat(p.total)||0),0);
+    byComm[f.komoditas].produksi  += (f.produksi||[]).reduce((s,p) => s + (parseFloat(p.jumlah)||0), 0);
+    byComm[f.komoditas].pendapatan += (f.produksi||[]).reduce((s,p) => s + (parseFloat(p.total)||0), 0);
   });
   doc.autoTable({
     startY: y,
@@ -1763,15 +1757,15 @@ function exportPDF() {
     styles: { fontSize: 9, cellPadding: 3 },
     headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245,250,245] },
-    margin: { left:10, right:10 },
+    margin: { left: 10, right: 10 },
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  // ---- 3. Data Produksi ----
-  let allProduksi = [];
-  farmers.forEach(f => (f.produksi||[]).forEach(p => allProduksi.push({...p, farmerName:f.nama, desa:f.desa})));
+  // ---- 3. Rekap Produksi ----
+  const allProduksi = [];
+  farmers.forEach(f => (f.produksi||[]).forEach(p => allProduksi.push({...p, farmerName: f.nama, desa: f.desa})));
   if (allProduksi.length) {
-    sectionTitle('REKAP PRODUKSI', '📦');
+    sectionTitle('REKAP PRODUKSI');
     doc.autoTable({
       startY: y,
       head: [['Petani','Desa','Tahun','Komoditas','Jumlah','Satuan','Total (Rp)','Pembeli']],
@@ -1779,16 +1773,16 @@ function exportPDF() {
       styles: { fontSize: 8, cellPadding: 2.5 },
       headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245,250,245] },
-      margin: { left:10, right:10 },
+      margin: { left: 10, right: 10 },
     });
     y = doc.lastAutoTable.finalY + 10;
   }
 
-  // ---- 4. Hama & Penyakit ----
-  let allHama = [];
-  farmers.forEach(f => (f.hama||[]).forEach(h => allHama.push({...h, farmerName:f.nama, desa:f.desa})));
+  // ---- 4. Rekap Hama & Penyakit ----
+  const allHama = [];
+  farmers.forEach(f => (f.hama||[]).forEach(h => allHama.push({...h, farmerName: f.nama, desa: f.desa})));
   if (allHama.length) {
-    sectionTitle('REKAP HAMA & PENYAKIT', '🐛');
+    sectionTitle('REKAP HAMA DAN PENYAKIT');
     doc.autoTable({
       startY: y,
       head: [['Petani','Desa','Hama/Penyakit','Tanaman','Tingkat','Status']],
@@ -1796,38 +1790,38 @@ function exportPDF() {
       styles: { fontSize: 8, cellPadding: 2.5 },
       headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [255,245,245] },
-      margin: { left:10, right:10 },
+      margin: { left: 10, right: 10 },
     });
     y = doc.lastAutoTable.finalY + 10;
   }
 
   // ---- 5. Daftar Lengkap Petani ----
-  sectionTitle('DAFTAR LENGKAP PETANI', '👨‍🌾');
+  sectionTitle('DAFTAR LENGKAP PETANI');
   doc.autoTable({
     startY: y,
     head: [['No','Nama','HP','Desa','Kecamatan','Komoditas','Lahan (Ha)','Tgl Input']],
     body: farmers.map((f,i) => [
       i+1, f.nama, f.hp||'-', f.desa, f.kecamatan, f.komoditas,
-      (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
+      (f.lahan||[]).reduce((s,l) => s + (parseFloat(l.luas)||0), 0).toFixed(2),
       f.tanggalInput||'-'
     ]),
     styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [45,106,53], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245,250,245] },
-    margin: { left:10, right:10 },
+    margin: { left: 10, right: 10 },
   });
 
   // ---- Footer tiap halaman ----
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(8); doc.setTextColor(150,150,150);
-    doc.text(`TaniMap — Sistem Informasi Petani | Halaman ${i} dari ${pageCount}`, pageW/2, 292, { align:'center' });
-    doc.setDrawColor(200,200,200);
-    doc.line(10, 289, pageW-10, 289);
+    doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+    doc.text('TaniMap - Sistem Informasi Petani | Halaman ' + i + ' dari ' + pageCount, pageW / 2, 292, { align: 'center' });
+    doc.setDrawColor(200, 200, 200);
+    doc.line(10, 289, pageW - 10, 289);
   }
 
-  const namaFile = `TaniMap_Laporan_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`;
+  const namaFile = 'TaniMap_Laporan_' + new Date().toLocaleDateString('id-ID').replace(/\//g, '-') + '.pdf';
   doc.save(namaFile);
   showToast('PDF berhasil diexport', 'success');
 }
