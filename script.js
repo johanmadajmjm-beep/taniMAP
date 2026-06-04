@@ -373,8 +373,8 @@ function openAddFarmerModal() {
   document.getElementById('farmerForm').reset();
   document.getElementById('farmerId').value = '';
   document.getElementById('farmerPhotoData').value = '';
-  document.getElementById('farmerPhotoPreview').style.display = 'none';
-  document.getElementById('photoUploadArea').style.display = 'flex';
+  document.getElementById('farmerPhotoPreviewWrap').style.display = 'none';
+  document.getElementById('photoUploadArea').style.display = 'block';
   // Reset inline sections
   document.getElementById('lahanFormList').innerHTML = '';
   document.getElementById('tanamanFormList').innerHTML = '';
@@ -403,11 +403,11 @@ function openEditFarmer(id) {
   document.getElementById('farmerPhotoData').value = f.foto || '';
   if (f.foto) {
     document.getElementById('farmerPhotoPreview').src = f.foto;
-    document.getElementById('farmerPhotoPreview').style.display = 'block';
+    document.getElementById('farmerPhotoPreviewWrap').style.display = 'block';
     document.getElementById('photoUploadArea').style.display = 'none';
   } else {
-    document.getElementById('farmerPhotoPreview').style.display = 'none';
-    document.getElementById('photoUploadArea').style.display = 'flex';
+    document.getElementById('farmerPhotoPreviewWrap').style.display = 'none';
+    document.getElementById('photoUploadArea').style.display = 'block';
   }
 
   // Populate inline lahan rows
@@ -434,10 +434,20 @@ function previewFarmerPhoto(event) {
     const data = e.target.result;
     document.getElementById('farmerPhotoData').value = data;
     document.getElementById('farmerPhotoPreview').src = data;
-    document.getElementById('farmerPhotoPreview').style.display = 'block';
+    document.getElementById('farmerPhotoPreviewWrap').style.display = 'block';
     document.getElementById('photoUploadArea').style.display = 'none';
   };
   reader.readAsDataURL(file);
+}
+
+function clearFarmerPhoto() {
+  document.getElementById('farmerPhotoData').value = '';
+  document.getElementById('farmerPhotoPreview').src = '';
+  document.getElementById('farmerPhotoPreviewWrap').style.display = 'none';
+  document.getElementById('photoUploadArea').style.display = 'block';
+  // Reset kedua input file
+  document.getElementById('farmerPhotoCamera').value = '';
+  document.getElementById('farmerPhotoGallery').value = '';
 }
 
 function saveFarmer(e) {
@@ -460,7 +470,7 @@ function saveFarmer(e) {
         jenis: row.querySelector('.lahan-jenis')?.value || 'Kebun',
         lat: parseFloat(row.querySelector('.lahan-lat')?.value) || null,
         lng: parseFloat(row.querySelector('.lahan-lng')?.value) || null,
-        foto: '',
+        foto: row.querySelector('input[type="hidden"].lahan-foto')?.value || '',
         catatan: row.querySelector('.lahan-catatan')?.value || ''
       });
     }
@@ -475,7 +485,7 @@ function saveFarmer(e) {
       tanamanData.push({
         id: row.dataset.id || ('T' + Date.now() + i),
         jenis,
-        foto: '',
+        foto: row.querySelector('input[type="hidden"].tanaman-foto')?.value || '',
         luasTanam: parseFloat(row.querySelector('.tanaman-luas')?.value) || 0,
         umurTanaman: parseInt(row.querySelector('.tanaman-umur')?.value) || 0,
         status: row.querySelector('.tanaman-status')?.value || 'Baik',
@@ -572,6 +582,7 @@ function updateRowCounts() {
 function addLahanRow(data = {}) {
   const list = document.getElementById('lahanFormList');
   const idx = list.querySelectorAll('.inline-form-row').length + 1;
+  const uid = 'lahan_' + Date.now() + '_' + idx;
   const div = document.createElement('div');
   div.className = 'inline-form-row';
   div.dataset.id = data.id || '';
@@ -618,8 +629,36 @@ function addLahanRow(data = {}) {
       <label class="form-label">Catatan</label>
       <input type="text" class="form-control lahan-catatan" value="${data.catatan||''}" placeholder="Keterangan tambahan (opsional)" />
     </div>
+    <!-- Foto Lahan -->
+    <div class="form-group">
+      <label class="form-label">Foto Lahan</label>
+      <div class="mini-photo-wrap" id="wrap_${uid}">
+        <div class="mini-photo-btns">
+          <label class="mini-photo-btn">
+            <i class="fas fa-camera"></i> Kamera
+            <input type="file" accept="image/*" capture="environment" onchange="previewMiniPhoto(this,'${uid}')" />
+          </label>
+          <label class="mini-photo-btn">
+            <i class="fas fa-images"></i> Galeri
+            <input type="file" accept="image/*" onchange="previewMiniPhoto(this,'${uid}')" />
+          </label>
+        </div>
+        <div id="prev_${uid}" style="display:none; margin-top:8px; position:relative">
+          <img class="lahan-foto mini-photo-preview" src="${data.foto||''}" style="${data.foto?'':'display:none'}" />
+          <button type="button" class="mini-photo-clear" onclick="clearMiniPhoto('${uid}','lahan-foto')">✕</button>
+        </div>
+        <input type="hidden" class="lahan-foto" value="${data.foto||''}" />
+      </div>
+    </div>
   `;
   list.appendChild(div);
+  // Jika ada foto existing, tampilkan preview
+  if (data.foto) {
+    const prevDiv = div.querySelector(`#prev_${uid}`);
+    const img = prevDiv.querySelector('img');
+    img.style.display = 'block';
+    prevDiv.style.display = 'block';
+  }
   updateRowCounts();
 }
 
@@ -629,6 +668,7 @@ function addLahanRow(data = {}) {
 function addTanamanRow(data = {}) {
   const list = document.getElementById('tanamanFormList');
   const idx = list.querySelectorAll('.inline-form-row').length + 1;
+  const uid = 'tanaman_' + Date.now() + '_' + idx;
   const statusOpts = ['Baik','Perawatan','Terserang Hama','Siap Panen'];
   const div = document.createElement('div');
   div.className = 'inline-form-row';
@@ -668,8 +708,35 @@ function addTanamanRow(data = {}) {
       <label class="form-label">Catatan Kondisi</label>
       <input type="text" class="form-control tanaman-catatan" value="${data.catatan||''}" placeholder="Keterangan tambahan (opsional)" />
     </div>
+    <!-- Foto Tanaman -->
+    <div class="form-group">
+      <label class="form-label">Foto Tanaman</label>
+      <div class="mini-photo-wrap" id="wrap_${uid}">
+        <div class="mini-photo-btns">
+          <label class="mini-photo-btn">
+            <i class="fas fa-camera"></i> Kamera
+            <input type="file" accept="image/*" capture="environment" onchange="previewMiniPhoto(this,'${uid}')" />
+          </label>
+          <label class="mini-photo-btn">
+            <i class="fas fa-images"></i> Galeri
+            <input type="file" accept="image/*" onchange="previewMiniPhoto(this,'${uid}')" />
+          </label>
+        </div>
+        <div id="prev_${uid}" style="display:none; margin-top:8px; position:relative">
+          <img class="tanaman-foto mini-photo-preview" src="${data.foto||''}" style="${data.foto?'':'display:none'}" />
+          <button type="button" class="mini-photo-clear" onclick="clearMiniPhoto('${uid}','tanaman-foto')">✕</button>
+        </div>
+        <input type="hidden" class="tanaman-foto" value="${data.foto||''}" />
+      </div>
+    </div>
   `;
   list.appendChild(div);
+  if (data.foto) {
+    const prevDiv = div.querySelector(`#prev_${uid}`);
+    const img = prevDiv.querySelector('img');
+    img.style.display = 'block';
+    prevDiv.style.display = 'block';
+  }
   updateRowCounts();
 }
 
@@ -732,6 +799,42 @@ function addProduksiRow(data = {}) {
   `;
   list.appendChild(div);
   updateRowCounts();
+}
+
+/**
+ * Preview foto di baris lahan/tanaman (mini)
+ */
+function previewMiniPhoto(input, uid) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const data = e.target.result;
+    const wrap = document.getElementById('wrap_' + uid);
+    const prevDiv = document.getElementById('prev_' + uid);
+    const img = prevDiv.querySelector('img');
+    // Simpan ke hidden input (ambil yang pertama — img class juga hidden input)
+    const hiddenInputs = wrap.querySelectorAll('input[type="hidden"]');
+    hiddenInputs.forEach(h => h.value = data);
+    img.src = data;
+    img.style.display = 'block';
+    prevDiv.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * Hapus foto di baris lahan/tanaman
+ */
+function clearMiniPhoto(uid, cls) {
+  const wrap = document.getElementById('wrap_' + uid);
+  const prevDiv = document.getElementById('prev_' + uid);
+  const img = prevDiv.querySelector('img');
+  img.src = '';
+  img.style.display = 'none';
+  prevDiv.style.display = 'none';
+  wrap.querySelectorAll('input[type="hidden"]').forEach(h => h.value = '');
+  wrap.querySelectorAll('input[type="file"]').forEach(f => f.value = '');
 }
 
 /**
