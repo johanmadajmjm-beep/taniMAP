@@ -94,88 +94,128 @@
       <!-- ========== DASHBOARD ========== -->
       <div class="page active" id="page-dashboard">
 
-  <section class="dashboard-hero">
-    <div>
-      <div class="hero-badge">🌾 TaniMap</div>
-      <h1>Selamat datang, Johan 👋</h1>
-      <p>Sistem informasi pendataan, pemetaan, dan monitoring petani berbasis lokasi.</p>
-    </div>
-    <div class="hero-stats">
-    <div class="hero-stat">
-        <span class="hero-stat-value">10</span>
-        <span class="hero-stat-label">Petani</span>
-    </div>
+        <section class="dashboard-hero">
+          <div>
+            <div class="hero-badge">🌾 TaniMap</div>
+            <h1>Selamat datang, Johan 👋</h1>
+            <p>Sistem informasi pendataan, pemetaan, dan monitoring petani berbasis lokasi.</p>
 
-    <div class="hero-stat">
-        <span class="hero-stat-value">16.35</span>
-        <span class="hero-stat-label">Ha Lahan</span>
-    </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <span class="hero-stat-value">GPS</span>
+                <span class="hero-stat-label">Pemetaan Lahan</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-value">Foto</span>
+                <span class="hero-stat-label">Petani & Tanaman</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-value">Export</span>
+                <span class="hero-stat-label">Excel & PDF</span>
+              </div>
+            </div>
+          </div>
 
-    <div class="hero-stat">
-        <span class="hero-stat-value">3148</span>
-        <span class="hero-stat-label">Kg Produksi</span>
-    </div>
-</div>
-    <div class="hero-actions">
-      <button class="btn btn-light" onclick="openAddFarmerModal()">
-        <i class="fas fa-plus"></i> Tambah Petani
-      </button>
-      <button class="btn btn-ghost-light" onclick="navigate('map')">
-        <i class="fas fa-map"></i> Lihat Peta
-      </button>
-    </div>
-  </section>
+          <div class="hero-actions">
+            <button class="btn btn-light" onclick="openAddFarmerModal()">
+              <i class="fas fa-plus"></i> Tambah Petani
+            </button>
+            <button class="btn btn-ghost-light" onclick="navigate('map')">
+              <i class="fas fa-map"></i> Lihat Peta
+            </button>
+          </div>
+        </section>
 
-  <div class="dashboard-section-title">
-    <div>
-      <h2>Ringkasan Data</h2>
-      <p>Rekap cepat kondisi data pertanian saat ini</p>
-    </div>
-  </div>
+        <div class="dashboard-section-title">
+          <div>
+            <h2>Ringkasan Data</h2>
+            <p>Rekap cepat kondisi data pertanian saat ini</p>
+          </div>
+        </div>
 
-  <div class="stats-grid" id="statsGrid"></div>
+        <div class="stats-grid" id="statsGrid"></div>
 
-  <div class="dashboard-main-grid">
-    <div class="chart-card chart-wide">
-      <div class="chart-title">📍 Petani per Desa</div>
-      <div class="chart-canvas-wrap"><canvas id="chartVillage"></canvas></div>
-    </div>
+        <div class="dashboard-main-grid">
 
-    <div class="chart-card">
-      <div class="chart-title">🌾 Sebaran Komoditas</div>
-      <div class="chart-canvas-wrap"><canvas id="chartCommodity"></canvas></div>
-    </div>
+          <div class="chart-card chart-wide">
+            <div class="chart-title">📍 Petani per Desa</div>
+            <div class="chart-canvas-wrap"><canvas id="chartVillage"></canvas></div>
+          </div>
 
-    <div class="chart-card">
-      <div class="chart-title">📦 Produksi per Komoditas</div>
-      <div class="chart-canvas-wrap"><canvas id="chartProduction"></canvas></div>
-    </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🗺️ Peta Sebaran Petani</div>
+              <button class="btn btn-outline btn-sm" onclick="navigate('map')">Buka Peta</button>
+            </div>
+            <div class="card-body">
+              <div style="min-height:230px;border-radius:18px;background:linear-gradient(135deg,#dcfce7,#f0fdf4);display:flex;align-items:center;justify-content:center;text-align:center;padding:22px;border:1px solid #bbf7d0">
+                <div>
+                  <div style="font-size:44px;margin-bottom:10px">🗺️</div>
+                  <div style="font-weight:800;font-size:16px;color:#14532d;margin-bottom:6px">Sebaran Wilayah Petani</div>
+                  <div style="font-size:13px;color:#64748b;max-width:260px">Buka peta interaktif untuk melihat marker petani, lokasi lahan, dan rute Google Maps.</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    <div class="card recent-card">
-      <div class="card-header">
-        <div class="card-title">Petani Terbaru</div>
-        <button class="btn btn-outline btn-sm" onclick="navigate('farmers')">Lihat Semua</button>
-      </div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Petani</th>
-                <th>Desa</th>
-                <th>Komoditas</th>
-                <th>Lahan</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="recentFarmersTable"></tbody>
-          </table>
+          <div class="card recent-card">
+            <div class="card-header">
+              <div class="card-title">👨‍🌾 Petani Terbaru</div>
+              <button class="btn btn-outline btn-sm" onclick="navigate('farmers')">Lihat Semua</button>
+            </div>
+            <div class="card-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Petani</th>
+                      <th>Desa</th>
+                      <th>Komoditas</th>
+                      <th>Lahan</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentFarmersTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⚡ Akses Cepat</div>
+            </div>
+            <div class="card-body">
+              <div style="display:grid;gap:12px">
+                <button class="btn btn-primary w-full" style="justify-content:center" onclick="openAddFarmerModal()">
+                  <i class="fas fa-user-plus"></i> Input Petani Baru
+                </button>
+                <button class="btn btn-secondary w-full" style="justify-content:center" onclick="navigate('visits')">
+                  <i class="fas fa-clipboard-list"></i> Catat Kunjungan
+                </button>
+                <button class="btn btn-secondary w-full" style="justify-content:center" onclick="navigate('production')">
+                  <i class="fas fa-box-open"></i> Lihat Produksi
+                </button>
+                <button class="btn btn-outline w-full" style="justify-content:center" onclick="navigate('reports')">
+                  <i class="fas fa-file-alt"></i> Buka Laporan
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">🌾 Sebaran Komoditas</div>
+            <div class="chart-canvas-wrap"><canvas id="chartCommodity"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">📦 Produksi per Komoditas</div>
+            <div class="chart-canvas-wrap"><canvas id="chartProduction"></canvas></div>
+          </div>
+
         </div>
       </div>
-    </div>
-  </div>
 
-</div>
       <!-- ========== FARMERS ========== -->
       <div class="page" id="page-farmers">
         <div class="toolbar">
