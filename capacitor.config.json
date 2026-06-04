@@ -1,0 +1,8 @@
+{
+  "appId": "com.johanmadajmjm.tanimap",
+  "appName": "TaniMap",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  }
+}
