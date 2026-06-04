@@ -309,6 +309,7 @@ function farmerCardHTML(f) {
       </div>
       <div class="farmer-card-footer">
         <button class="btn btn-outline btn-sm" style="flex:1" onclick="openDetail('${f.id}')"><i class="fas fa-eye"></i> Detail</button>
+        <button class="btn btn-secondary btn-sm" onclick="cetakKartu('${f.id}')"><i class="fas fa-id-card"></i></button>
         <button class="btn btn-secondary btn-sm" onclick="openEditFarmer('${f.id}')"><i class="fas fa-edit"></i></button>
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteFarmer('${f.id}')"><i class="fas fa-trash"></i></button>
       </div>
@@ -856,6 +857,202 @@ function removeRow(btn) {
   updateRowCounts();
 }
 
+// ============================================================
+//  CETAK KARTU PETANI
+// ============================================================
+
+/**
+ * Buka modal kartu petani dan generate QR code
+ */
+function cetakKartu(id) {
+  const f = farmers.find(x => x.id === id);
+  if (!f) return;
+
+  const totalLahan = (f.lahan||[]).reduce((s,l) => s + (parseFloat(l.luas)||0), 0);
+  const totalProduksi = (f.produksi||[]).reduce((s,p) => s + (parseFloat(p.total)||0), 0);
+
+  // Tutup modal detail kalau terbuka
+  closeModal('modalDetail');
+
+  // Buat atau tampilkan modal kartu
+  let modal = document.getElementById('modalKartu');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modalKartu';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:420px">
+        <div class="modal-header">
+          <div class="modal-title">Kartu Petani</div>
+          <button class="modal-close" onclick="closeModal('modalKartu')">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:16px">
+          <div id="kartuPreview"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal('modalKartu')">Tutup</button>
+          <button class="btn btn-primary" onclick="printKartu()">
+            <i class="fas fa-print"></i> Cetak / Simpan
+          </button>
+        </div>
+      </div>
+    `;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+    document.body.appendChild(modal);
+  }
+
+  // Warna komoditas
+  const kommColors = {
+    'Kopi Arabika':'#1b5e20','Kopi Robusta':'#2e7d32','Jagung':'#f57f17',
+    'Padi':'#388e3c','Kakao':'#4e342e','Cabai':'#c62828',
+    'Cengkeh':'#e64a19','Vanili':'#6a1b9a',
+  };
+  const warna = kommColors[f.komoditas] || '#2d6a35';
+
+  // HTML kartu
+  const kartuHTML = `
+    <div id="kartuPetani" style="
+      width:340px; margin:0 auto;
+      border-radius:16px; overflow:hidden;
+      box-shadow:0 4px 20px rgba(0,0,0,.15);
+      font-family:'Plus Jakarta Sans',sans-serif;
+      background:#fff;
+    ">
+      <!-- Header kartu -->
+      <div style="background:${warna}; padding:14px 18px; display:flex; align-items:center; gap:10px">
+        <div style="background:rgba(255,255,255,.2); border-radius:8px; padding:4px 10px">
+          <span style="color:#fff; font-size:11px; font-weight:700; letter-spacing:1px">TANIMAP</span>
+        </div>
+        <span style="color:rgba(255,255,255,.8); font-size:11px; margin-left:auto">Kartu Petani</span>
+      </div>
+
+      <!-- Body kartu -->
+      <div style="padding:18px; display:flex; gap:14px; align-items:flex-start">
+        <!-- Foto -->
+        <div style="flex-shrink:0">
+          ${f.foto
+            ? `<img src="${f.foto}" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:3px solid ${warna}" />`
+            : `<div style="width:80px;height:80px;border-radius:10px;background:${warna}22;border:3px solid ${warna};display:flex;align-items:center;justify-content:center;font-size:36px">👨‍🌾</div>`
+          }
+        </div>
+        <!-- Info -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:800;color:#1c1c1e;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nama}</div>
+          <div style="font-size:11px;color:#636366;margin-bottom:8px">${f.desa}, ${f.kecamatan}</div>
+          <div style="display:inline-block;background:${warna}22;color:${warna};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-bottom:8px">${f.komoditas}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <div style="background:#f2f2f7;border-radius:6px;padding:6px 8px">
+              <div style="font-size:9px;color:#aeaeb2;font-weight:700;text-transform:uppercase">Lahan</div>
+              <div style="font-size:13px;font-weight:700;color:#1c1c1e">${totalLahan.toFixed(2)} Ha</div>
+            </div>
+            <div style="background:#f2f2f7;border-radius:6px;padding:6px 8px">
+              <div style="font-size:9px;color:#aeaeb2;font-weight:700;text-transform:uppercase">HP</div>
+              <div style="font-size:11px;font-weight:700;color:#1c1c1e">${f.hp || '-'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info baris bawah -->
+      <div style="padding:0 18px 14px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px">
+        <div style="background:#f2f2f7;border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:#aeaeb2;font-weight:700;text-transform:uppercase">Kelompok</div>
+          <div style="font-size:10px;font-weight:700;color:#1c1c1e">${f.kelompokTani || '-'}</div>
+        </div>
+        <div style="background:#f2f2f7;border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:#aeaeb2;font-weight:700;text-transform:uppercase">Tgl Input</div>
+          <div style="font-size:10px;font-weight:700;color:#1c1c1e">${f.tanggalInput || '-'}</div>
+        </div>
+        <div style="background:#f2f2f7;border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:#aeaeb2;font-weight:700;text-transform:uppercase">Pendapatan</div>
+          <div style="font-size:10px;font-weight:700;color:${warna}">Rp ${totalProduksi > 0 ? (totalProduksi/1000000).toFixed(1)+'jt' : '-'}</div>
+        </div>
+      </div>
+
+      <!-- QR Code + footer -->
+      <div style="background:${warna}11; border-top:1px solid ${warna}33; padding:12px 18px; display:flex; align-items:center; gap:12px">
+        <div id="qrcode" style="background:#fff;padding:4px;border-radius:6px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:9px;color:#636366;line-height:1.5">
+            ID: <strong>${f.id}</strong><br/>
+            ${f.lat && f.lng ? `GPS: ${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}` : 'GPS: Belum diatur'}
+          </div>
+          <div style="font-size:8px;color:#aeaeb2;margin-top:4px">TaniMap © 2026</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('kartuPreview').innerHTML = kartuHTML;
+  modal.classList.add('open');
+
+  // Generate QR code
+  setTimeout(() => {
+    const qrEl = document.getElementById('qrcode');
+    if (!qrEl) return;
+    qrEl.innerHTML = '';
+    const qrData = `TANIMAP|${f.id}|${f.nama}|${f.desa}|${f.komoditas}|${f.hp||''}|${f.lat||''}|${f.lng||''}`;
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrEl, {
+        text: qrData, width: 64, height: 64,
+        colorDark: warna, colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      // Fallback: tampilkan ID saja
+      qrEl.innerHTML = `<div style="width:64px;height:64px;background:${warna}22;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${warna};text-align:center;padding:4px">${f.id}</div>`;
+    }
+  }, 100);
+}
+
+/**
+ * Cetak kartu petani menggunakan window.print()
+ */
+function printKartu() {
+  const kartu = document.getElementById('kartuPetani');
+  if (!kartu) return;
+
+  const printWin = window.open('', '_blank', 'width=500,height=650');
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Kartu Petani - TaniMap</title>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#f5f5f5; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
+        @media print {
+          body { background:#fff; padding:0; }
+          .no-print { display:none; }
+          @page { size: 90mm 55mm; margin:0; }
+        }
+        .actions { text-align:center; margin-bottom:16px; }
+        .actions button {
+          background:#2d6a35; color:#fff; border:none;
+          padding:10px 24px; border-radius:8px; font-size:14px;
+          font-weight:600; cursor:pointer; margin:0 4px;
+          font-family:'Plus Jakarta Sans',sans-serif;
+        }
+        .actions button.sec { background:#f2f2f7; color:#3a3a3c; }
+      </style>
+    </head>
+    <body>
+      <div>
+        <div class="actions no-print">
+          <button onclick="window.print()">🖨️ Cetak</button>
+          <button class="sec" onclick="window.close()">Tutup</button>
+        </div>
+        ${kartu.outerHTML}
+      </div>
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+  printWin.focus();
+}
+
 function confirmDeleteFarmer(id) {
   const f = farmers.find(x => x.id === id);
   showConfirm('🗑️', 'Hapus Petani', `Hapus data <strong>${f?.nama}</strong>? Tindakan ini tidak bisa dibatalkan.`, () => {
@@ -902,6 +1099,7 @@ function openDetail(id) {
         <div class="flex mt-2" style="gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openEditFarmer('${f.id}');closeModal('modalDetail')"><i class="fas fa-edit"></i> Edit</button>
           <button class="btn btn-danger btn-sm" onclick="confirmDeleteFarmer('${f.id}');closeModal('modalDetail')"><i class="fas fa-trash"></i> Hapus</button>
+          <button class="btn btn-primary btn-sm" onclick="cetakKartu('${f.id}')"><i class="fas fa-id-card"></i> Cetak Kartu</button>
           ${f.lat && f.lng ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" class="btn btn-secondary btn-sm"><i class="fas fa-map"></i> Google Maps</a>` : ''}
         </div>
       </div>
