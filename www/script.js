@@ -161,10 +161,45 @@ function closeSidebar() {
 
 function renderDashboard() {
   renderStats();
+  renderInsights();
   renderCharts();
   renderRecentFarmers();
 }
+function renderInsights() {
+  const totalPetani = farmers.length;
 
+  const villageCount = {};
+  farmers.forEach(f => {
+    villageCount[f.desa] = (villageCount[f.desa] || 0) + 1;
+  });
+
+  const topVillage = Object.keys(villageCount).length
+    ? Object.entries(villageCount).sort((a, b) => b[1] - a[1])[0][0]
+    : '-';
+
+  const commodityCount = {};
+  farmers.forEach(f => {
+    commodityCount[f.komoditas] = (commodityCount[f.komoditas] || 0) + 1;
+  });
+
+  const topCommodity = Object.keys(commodityCount).length
+    ? Object.entries(commodityCount).sort((a, b) => b[1] - a[1])[0][0]
+    : '-';
+
+  const totalProduction = farmers.reduce((s, f) =>
+    s + (f.produksi || []).reduce((a, p) => a + (parseFloat(p.jumlah) || 0), 0)
+  , 0);
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  setText('insightTotalPetani', totalPetani);
+  setText('insightTopVillage', topVillage);
+  setText('insightTopCommodity', topCommodity);
+  setText('insightTotalProduction', totalProduction.toLocaleString('id-ID') + ' Kg');
+}
 function renderStats() {
   const totalFarmers = farmers.length;
   const totalLahan = farmers.reduce((s, f) => s + (f.lahan || []).reduce((a, l) => a + (parseFloat(l.luas) || 0), 0), 0);
