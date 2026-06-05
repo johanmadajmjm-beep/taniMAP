@@ -2238,7 +2238,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbycl-mfguVcZkL2Lo5ReCeKbzWErzB4n0hUXt1y-1-NW35UFo3IxhjFPnOftEJCh-fK/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbygoIFasnu5tpMCehAe-QPnO9uEKgmzoSOStD9nTkDmawxKxnaBmaPPCuBHCRwLtHbk/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
@@ -2333,22 +2333,21 @@ async function doSendToSheets() {
   }
 
   try {
-    const res = await fetch(SHEETS_WEBHOOK_URL, {
-      method: 'POST',
-      mode: 'no-cors', // Apps Script tidak support CORS standar
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    // Kirim via GET dengan data di-encode sebagai parameter URL
+    // Ini cara yang bekerja di Android WebView tanpa CORS issue
+    const dataStr = encodeURIComponent(JSON.stringify(payload));
+    const url = SHEETS_WEBHOOK_URL + '?data=' + dataStr;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      mode: 'no-cors'
     });
 
-    // mode: no-cors → response selalu opaque, tidak bisa baca body
-    // Jika sampai sini tanpa error = sukses
     setSheetStatus('success',
       `<i class="fas fa-check-circle"></i> Data berhasil dikirim ke Google Sheets! ` +
       `Admin dapat melihat data di spreadsheet.`
     );
     showToast('Data berhasil dikirim ke Google Sheets', 'success');
-
-    // Catat waktu kirim terakhir
     localStorage.setItem('tanimap_lastSync', new Date().toISOString());
 
   } catch (err) {
