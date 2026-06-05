@@ -15,44 +15,48 @@ let charts = {};            // Chart.js instances
 let currentPage = 'dashboard';  // Halaman aktif
 
 // ============================================================
-//  IMGBB CONFIG
-//  Daftar gratis di https://api.imgbb.com → dapat API key
+//  CLOUDINARY CONFIG — gratis, no hotlink restriction
+//  Daftar di https://cloudinary.com → gratis 25GB
+//  Upload Preset: buat di Settings → Upload → Add upload preset
+//  Set "Signing Mode" = Unsigned
 // ============================================================
-const IMGBB_API_KEY = '8e048d3f5b44c0da0c58f19e4fcc721b';
+const CLOUDINARY_CLOUD_NAME = 'dgvuhgb5o';
+const CLOUDINARY_UPLOAD_PRESET = 'nazkc08a';
 
 /**
- * Upload satu foto (base64) ke ImgBB
- * Return: URL foto jika berhasil, null jika gagal/offline/bukan base64
+ * Upload satu foto (base64) ke Cloudinary
+ * Return: URL foto jika berhasil, base64 asli jika gagal/offline
  */
 async function uploadFotoImgBB(base64OrUrl, namaFile) {
-  // Kalau sudah URL (sudah pernah diupload) — skip
+  // Kalau sudah URL — skip
   if (!base64OrUrl || base64OrUrl.startsWith('http')) return base64OrUrl;
   // Kalau bukan base64 image — skip
   if (!base64OrUrl.startsWith('data:image')) return base64OrUrl;
-  // Kalau tidak ada koneksi — kembalikan base64 asli (simpan offline)
+  // Kalau offline — simpan base64 dulu
   if (!navigator.onLine) return base64OrUrl;
+  // Kalau belum dikonfigurasi — skip
+  if (CLOUDINARY_CLOUD_NAME === 'GANTI_CLOUD_NAME') return base64OrUrl;
 
   try {
-    const base64Data = base64OrUrl.split(',')[1];
-    const formData   = new FormData();
-    formData.append('key', IMGBB_API_KEY);
-    formData.append('image', base64Data);
-    formData.append('name', namaFile || 'tanimap_' + Date.now());
+    const formData = new FormData();
+    formData.append('file', base64OrUrl);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('public_id', 'tanimap/' + (namaFile || Date.now()).replace(/\s+/g, '_'));
 
-    const res  = await fetch('https://api.imgbb.com/1/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    const res  = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData }
+    );
     const json = await res.json();
 
-    if (json.success) {
-      return json.data.url; // URL permanen ImgBB
+    if (json.secure_url) {
+      return json.secure_url; // URL HTTPS permanen Cloudinary
     }
-    console.warn('ImgBB upload gagal:', json);
-    return base64OrUrl; // fallback ke base64
+    console.warn('Cloudinary upload gagal:', json);
+    return base64OrUrl;
   } catch (err) {
-    console.warn('ImgBB upload error:', err);
-    return base64OrUrl; // fallback ke base64 jika error
+    console.warn('Cloudinary upload error:', err);
+    return base64OrUrl;
   }
 }
 
@@ -2568,7 +2572,7 @@ async function doSendToSheets() {
   const fotoBelumUpload = hitungFotoBelumUpload();
   let farmersData = farmers;
 
-  if (fotoBelumUpload > 0 && navigator.onLine && IMGBB_API_KEY !== 'GANTI_DENGAN_IMGBB_API_KEY_KAMU') {
+  if (fotoBelumUpload > 0 && navigator.onLine && CLOUDINARY_CLOUD_NAME !== 'GANTI_CLOUD_NAME') {
     setSheetStatus('loading',
       `<i class="fas fa-cloud-upload-alt fa-spin"></i> Upload ${fotoBelumUpload} foto ke cloud...`
     );
