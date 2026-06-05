@@ -2769,3 +2769,80 @@ async function downloadMapPDF() {
     btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF';
   }
 }
+
+// ============================================================
+//  HANDLE TOMBOL BACK ANDROID
+// ============================================================
+
+/**
+ * Intercept tombol back Android via Capacitor App plugin
+ * Prioritas: tutup modal → tutup FAB → navigasi halaman → konfirmasi keluar
+ */
+function initBackButton() {
+  // Capacitor App plugin
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', handleBackButton);
+    console.log('Back button handler aktif via Capacitor');
+    return;
+  }
+
+  // Fallback: intercept popstate untuk browser
+  window.addEventListener('popstate', (e) => {
+    e.preventDefault();
+    handleBackButton();
+  });
+  // Push state agar popstate bisa dicatch
+  history.pushState(null, '', window.location.href);
+}
+
+function handleBackButton() {
+  // 1. Tutup modal yang terbuka
+  const openModals = document.querySelectorAll('.modal-overlay.open');
+  if (openModals.length > 0) {
+    openModals[openModals.length - 1].classList.remove('open');
+    return;
+  }
+
+  // 2. Tutup FAB jika terbuka
+  if (fabOpen) {
+    closeFab();
+    return;
+  }
+
+  // 3. Tutup confirm dialog jika terbuka
+  const confirmOverlay = document.getElementById('confirm-overlay');
+  if (confirmOverlay && confirmOverlay.classList.contains('open')) {
+    closeConfirm();
+    return;
+  }
+
+  // 4. Tutup inline modal jika ada
+  const inlineModal = document.getElementById('inlineModal');
+  if (inlineModal) {
+    inlineModal.remove();
+    return;
+  }
+
+  // 5. Jika bukan di beranda, navigasi ke beranda
+  if (currentPage !== 'dashboard') {
+    navigate('dashboard');
+    return;
+  }
+
+  // 6. Sudah di beranda — konfirmasi keluar
+  showConfirm(
+    '🚪',
+    'Keluar Aplikasi',
+    'Apakah kamu yakin ingin keluar dari TaniMap?',
+    () => {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.exitApp();
+      }
+    }
+  );
+}
+
+// Panggil saat app dimuat
+document.addEventListener('DOMContentLoaded', () => {
+  initBackButton();
+});
