@@ -1138,29 +1138,81 @@ function bukaModalFoto(dataUrl, filename, judul) {
 }
 
 /**
- * Simpan foto dari modal ke HP
+ * Simpan foto dari modal ke galeri HP
+ * - APK Android: pakai Capacitor Filesystem + Share plugin
+ * - Browser: pakai Web Share API atau instruksi tekan tahan
  */
-function simpanFotoModal() {
+async function simpanFotoModal() {
   if (!_currentFotoData) return;
+
+  const btn = document.getElementById('modalFotoSaveBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+
   try {
-    const a = document.createElement('a');
-    a.href = _currentFotoData;
-    a.download = _currentFotoFilename || 'foto.jpg';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('Foto sedang disimpan...', 'success');
+    // ── STRATEGI 1: Capacitor native (APK Android) ──
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = window.Capacitor.Plugins;
+      const { Share } = window.Capacitor.Plugins;
+
+      // Ambil base64 murni tanpa header
+      const base64Data = _currentFotoData.includes(',')
+        ? _currentFotoData.split(',')[1]
+        : _currentFotoData;
+
+      // Tulis ke folder Cache dulu
+      const fileName = _currentFotoFilename || ('TaniMap_' + Date.now() + '.jpg');
+      const writeResult = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      // Buka Share sheet — user bisa pilih "Simpan ke Galeri"
+      await Share.share({
+        title: 'Simpan Foto TaniMap',
+        url: writeResult.uri,
+        dialogTitle: 'Simpan foto ke galeri',
+      });
+
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
+      return;
+    }
+
+    // ── STRATEGI 2: Web Share API (browser/GitHub Pages) ──
+    const res  = await fetch(_currentFotoData);
+    const blob = await res.blob();
+    const file = new File([blob], _currentFotoFilename || 'foto.jpg', { type: blob.type });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Foto TaniMap' });
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
+      return;
+    }
+
+    // ── STRATEGI 3: <a>.download (desktop browser) ──
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = _currentFotoFilename || 'foto.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast('Foto berhasil diunduh', 'success');
+
   } catch (err) {
-    // Fallback: buka di tab baru agar user bisa tekan tahan → simpan
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh">
-        <img src="${_currentFotoData}" style="max-width:100%;max-height:100vh;object-fit:contain" />
-        </body></html>`);
-      w.document.close();
-      showToast('Tekan tahan foto → Simpan Gambar', 'info');
+    if (err.name === 'AbortError') {
+      // User tutup share sheet — normal, tidak error
+    } else {
+      console.error('Simpan foto error:', err);
+      // Fallback terakhir: instruksi tekan tahan
+      document.getElementById('modalFotoInfo').innerHTML =
+        '<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;color:#92400e">' +
+        '<i class="fas fa-hand-pointer"></i> <b>Tekan tahan pada foto di atas</b>, lalu pilih <b>"Simpan Gambar"</b>' +
+        '</div>';
+      if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Mengerti'; btn.onclick = () => closeModal('modalFotoViewer'); }
+      return;
     }
   }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
 }
 
 function confirmDeleteFarmer(id) {
