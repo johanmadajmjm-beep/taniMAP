@@ -530,8 +530,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 /* ---- Farmer Cards ---- */
 .farmers-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
 }
 .farmer-card {
   background: var(--white);
@@ -540,34 +540,73 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   box-shadow: var(--shadow-xs);
   overflow: hidden;
   transition: all 0.22s var(--ease-smooth);
-  cursor: pointer;
 }
-.farmer-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--gray-200); }
+.farmer-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--gray-200); }
+
 .farmer-card-top {
-  padding: 16px 16px 12px;
-  display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px;
+  display: flex; gap: 12px; align-items: center;
 }
 .farmer-avatar {
-  width: 48px; height: 48px;
-  border-radius: var(--radius-sm);
+  width: 44px; height: 44px;
+  border-radius: 50%;
   object-fit: cover;
   background: var(--green-100);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
+  font-size: 20px; flex-shrink: 0;
   overflow: hidden;
 }
 .farmer-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .farmer-info { flex: 1; min-width: 0; }
-.farmer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.farmer-village { font-size: 12px; color: var(--gray-400); }
-.farmer-card-body { padding: 0 16px 14px; }
-.farmer-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.farmer-name {
+  font-weight: 700; font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--gray-900); margin-bottom: 2px;
+}
+.farmer-village {
+  font-size: 11.5px; color: var(--gray-400);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.farmer-card-body {
+  padding: 0 16px 12px;
+  display: flex; gap: 16px; align-items: center;
+}
+.farmer-stat {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.farmer-stat-val {
+  font-size: 13px; font-weight: 700; color: var(--gray-900);
+}
+.farmer-stat-key {
+  font-size: 10px; color: var(--gray-400);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.farmer-stat-divider {
+  width: 1px; height: 28px; background: var(--gray-100); flex-shrink: 0;
+}
+
 .farmer-card-footer {
   padding: 10px 16px;
   border-top: 1px solid var(--gray-50);
-  display: flex; gap: 6px;
+  display: flex; align-items: center; gap: 6px;
   background: var(--gray-50);
 }
+.farmer-card-actions {
+  display: flex; gap: 4px; margin-left: auto;
+}
+.btn-card-action {
+  width: 30px; height: 30px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; cursor: pointer;
+  color: var(--gray-500);
+  transition: all 0.15s var(--ease-smooth);
+}
+.btn-card-action:hover { background: var(--gray-100); color: var(--gray-700); }
+.btn-card-action.danger:hover { background: var(--red-100); color: var(--red-500); border-color: var(--red-100); }
 
 /* ---- Map ---- */
 #map {
