@@ -21,6 +21,8 @@ let currentPage = 'dashboard';  // Halaman aktif
 document.addEventListener('DOMContentLoaded', async () => {
   loadFromStorage();           // Muat data dari localStorage
   navigate('dashboard');       // Tampilkan halaman beranda
+  loadAppPreferences();        // Muat tema & ukuran huruf
+  initBackButton();            // Aktifkan back button handler
 });
 
 /**
@@ -1139,80 +1141,86 @@ function bukaModalFoto(dataUrl, filename, judul) {
 
 /**
  * Simpan foto dari modal ke galeri HP
- * - APK Android: pakai Capacitor Filesystem + Share plugin
- * - Browser: pakai Web Share API atau instruksi tekan tahan
+ * PENTING: Tidak menggunakan fetch() karena tidak bisa handle data:URL di WebView
+ * Konversi base64 → Blob dilakukan manual via atob()
  */
 async function simpanFotoModal() {
   if (!_currentFotoData) return;
 
   const btn = document.getElementById('modalFotoSaveBtn');
+  const resetBtn = () => {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
+  };
+
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
   try {
+    // Konversi base64 → Blob (tanpa fetch — bekerja di semua environment)
+    const dataUrl   = _currentFotoData;
+    const fileName  = _currentFotoFilename || ('TaniMap_' + Date.now() + '.jpg');
+    const base64Raw = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+    const mimeType  = dataUrl.includes('data:') ? dataUrl.split(';')[0].split(':')[1] : 'image/jpeg';
+
+    // Decode base64 → binary → Uint8Array → Blob
+    const binary = atob(base64Raw);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
+
     // ── STRATEGI 1: Capacitor native (APK Android) ──
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
       const { Filesystem, Directory } = window.Capacitor.Plugins;
       const { Share } = window.Capacitor.Plugins;
 
-      // Ambil base64 murni tanpa header
-      const base64Data = _currentFotoData.includes(',')
-        ? _currentFotoData.split(',')[1]
-        : _currentFotoData;
-
-      // Tulis ke folder Cache dulu
-      const fileName = _currentFotoFilename || ('TaniMap_' + Date.now() + '.jpg');
-      const writeResult = await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Cache,
-      });
-
-      // Buka Share sheet — user bisa pilih "Simpan ke Galeri"
-      await Share.share({
-        title: 'Simpan Foto TaniMap',
-        url: writeResult.uri,
-        dialogTitle: 'Simpan foto ke galeri',
-      });
-
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
-      return;
+      if (Filesystem && Share) {
+        const writeResult = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Raw,
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: 'Simpan Foto TaniMap',
+          url: writeResult.uri,
+          dialogTitle: 'Simpan foto ke galeri',
+        });
+        resetBtn();
+        return;
+      }
     }
 
-    // ── STRATEGI 2: Web Share API (browser/GitHub Pages) ──
-    const res  = await fetch(_currentFotoData);
-    const blob = await res.blob();
-    const file = new File([blob], _currentFotoFilename || 'foto.jpg', { type: blob.type });
-
+    // ── STRATEGI 2: Web Share API dengan File ──
+    const file = new File([blob], fileName, { type: mimeType });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: 'Foto TaniMap' });
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
+      resetBtn();
       return;
     }
 
-    // ── STRATEGI 3: <a>.download (desktop browser) ──
-    const url = URL.createObjectURL(blob);
-    const a   = document.createElement('a');
-    a.href = url; a.download = _currentFotoFilename || 'foto.jpg';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    showToast('Foto berhasil diunduh', 'success');
+    // ── STRATEGI 3: <a>.download — desktop browser ──
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    showToast('Foto sedang diunduh', 'success');
+    resetBtn();
 
   } catch (err) {
-    if (err.name === 'AbortError') {
-      // User tutup share sheet — normal, tidak error
-    } else {
-      console.error('Simpan foto error:', err);
-      // Fallback terakhir: instruksi tekan tahan
-      document.getElementById('modalFotoInfo').innerHTML =
+    resetBtn();
+    if (err.name === 'AbortError') return; // user tutup share sheet — normal
+    console.error('Simpan foto error:', err);
+    // Tampilkan instruksi tekan tahan sebagai fallback terakhir
+    const infoEl = document.getElementById('modalFotoInfo');
+    if (infoEl) {
+      infoEl.innerHTML =
         '<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;color:#92400e">' +
-        '<i class="fas fa-hand-pointer"></i> <b>Tekan tahan pada foto di atas</b>, lalu pilih <b>"Simpan Gambar"</b>' +
+        '<i class="fas fa-hand-pointer"></i> <b>Tekan tahan pada foto</b>, lalu pilih <b>"Simpan Gambar"</b>' +
         '</div>';
-      if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Mengerti'; btn.onclick = () => closeModal('modalFotoViewer'); }
-      return;
     }
   }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
 }
 
 function confirmDeleteFarmer(id) {
@@ -1228,12 +1236,27 @@ function confirmDeleteFarmer(id) {
 // ---- GPS ----
 
 function getGPSForForm() {
-  if (!navigator.geolocation) { showToast('Geolokasi tidak didukung', 'error'); return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    document.getElementById('fLat').value = pos.coords.latitude.toFixed(6);
-    document.getElementById('fLng').value = pos.coords.longitude.toFixed(6);
-    showToast('Koordinat GPS berhasil diambil', 'success');
-  }, () => showToast('Gagal mengambil lokasi', 'error'));
+  if (!navigator.geolocation) {
+    showToast('GPS tidak didukung di perangkat ini', 'error');
+    return;
+  }
+  showToast('Mengambil lokasi GPS...', 'info');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('fLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('fLng').value = pos.coords.longitude.toFixed(6);
+      showToast('GPS berhasil: ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4), 'success');
+    },
+    err => {
+      const msg = {
+        1: 'Izin lokasi ditolak. Aktifkan di Pengaturan → Aplikasi → TaniMap → Izin → Lokasi',
+        2: 'Lokasi tidak tersedia. Pastikan GPS aktif di HP',
+        3: 'Waktu habis. Coba lagi di tempat terbuka',
+      };
+      showToast(msg[err.code] || 'Gagal mengambil lokasi', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
 }
 
 // ---- DETAIL ----
@@ -1675,8 +1698,8 @@ function renderVisitsTable() {
     <tr>
       <td>${k.tanggal}</td>
       <td><strong>${k.farmerName}</strong></td>
-      <td>${k.farmerVillage}</td>
-      <td>${k.petugas}</td>
+      <td class="hide-mobile">${k.farmerVillage}</td>
+      <td class="hide-mobile">${k.petugas}</td>
       <td><span class="badge ${k.kondisi==='Baik'?'badge-green':k.kondisi==='Cukup'?'badge-blue':'badge-red'}">${k.kondisi}</span></td>
       <td><button class="btn btn-outline btn-sm" onclick="openDetail('${k.farmerId}')">Detail</button></td>
     </tr>
@@ -1745,9 +1768,9 @@ function renderCropsTable() {
     <tr>
       <td><strong>${t.jenis}</strong></td>
       <td>${t.farmerName}</td>
-      <td>${t.farmerVillage}</td>
-      <td>${t.luasTanam} Ha</td>
-      <td>${t.umurTanaman} bln</td>
+      <td class="hide-mobile">${t.farmerVillage}</td>
+      <td class="hide-mobile">${t.luasTanam} Ha</td>
+      <td class="hide-mobile">${t.umurTanaman} bln</td>
       <td>${cropStatusBadge(t.status)}</td>
       <td>${t.perkiraanPanen || '-'}</td>
     </tr>
@@ -1778,8 +1801,8 @@ function renderProductionTable() {
       <td>${p.tahun} (${p.musim})</td>
       <td>${p.farmerName}</td>
       <td>${commodityBadge(p.komoditas)}</td>
-      <td>${p.jumlah} ${p.satuan}</td>
-      <td>Rp ${formatNumber(p.harga)}</td>
+      <td class="hide-mobile">${p.jumlah} ${p.satuan}</td>
+      <td class="hide-mobile">Rp ${formatNumber(p.harga)}</td>
       <td class="fw-bold text-green">Rp ${formatNumber(p.total)}</td>
       <td>${p.pembeli || '-'}</td>
     </tr>
@@ -1864,11 +1887,19 @@ function renderMapMarkers() {
 function filterMapMarkers() { renderMapMarkers(); }
 
 function getMyLocation() {
-  if (!navigator.geolocation) { showToast('Geolokasi tidak didukung', 'error'); return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-    showToast('Peta dipusatkan ke lokasi Anda', 'success');
-  }, () => showToast('Gagal mengambil lokasi', 'error'));
+  if (!navigator.geolocation) { showToast('GPS tidak didukung', 'error'); return; }
+  showToast('Mengambil lokasi...', 'info');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      showToast('Peta dipusatkan ke lokasi kamu', 'success');
+    },
+    err => {
+      const msg = { 1: 'Izin lokasi ditolak', 2: 'GPS tidak aktif', 3: 'Timeout GPS' };
+      showToast(msg[err.code] || 'Gagal mengambil lokasi', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
 }
 
 function resetMap() {
@@ -2575,11 +2606,7 @@ function loadAppPreferences() {
   setFontSize(fontSize);
 }
 
-// Panggil saat DOM siap — tambahkan ke DOMContentLoaded yang sudah ada
-// Fungsi ini dipanggil manual di bawah inisialisasi
-document.addEventListener('DOMContentLoaded', () => {
-  loadAppPreferences();
-});
+// loadAppPreferences dipanggil dari DOMContentLoaded utama
 
 // ============================================================
 //  FAB — Floating Action Button
@@ -2842,7 +2869,4 @@ function handleBackButton() {
   );
 }
 
-// Panggil saat app dimuat
-document.addEventListener('DOMContentLoaded', () => {
-  initBackButton();
-});
+// initBackButton dipanggil dari DOMContentLoaded utama
