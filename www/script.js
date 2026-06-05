@@ -15,6 +15,103 @@ let charts = {};            // Chart.js instances
 let currentPage = 'dashboard';  // Halaman aktif
 
 // ============================================================
+//  IMGBB CONFIG
+//  Daftar gratis di https://api.imgbb.com → dapat API key
+// ============================================================
+const IMGBB_API_KEY = 'GANTI_DENGAN_IMGBB_API_KEY_KAMU';
+
+/**
+ * Upload satu foto (base64) ke ImgBB
+ * Return: URL foto jika berhasil, null jika gagal/offline/bukan base64
+ */
+async function uploadFotoImgBB(base64OrUrl, namaFile) {
+  // Kalau sudah URL (sudah pernah diupload) — skip
+  if (!base64OrUrl || base64OrUrl.startsWith('http')) return base64OrUrl;
+  // Kalau bukan base64 image — skip
+  if (!base64OrUrl.startsWith('data:image')) return base64OrUrl;
+  // Kalau tidak ada koneksi — kembalikan base64 asli (simpan offline)
+  if (!navigator.onLine) return base64OrUrl;
+
+  try {
+    const base64Data = base64OrUrl.split(',')[1];
+    const formData   = new FormData();
+    formData.append('key', IMGBB_API_KEY);
+    formData.append('image', base64Data);
+    formData.append('name', namaFile || 'tanimap_' + Date.now());
+
+    const res  = await fetch('https://api.imgbb.com/1/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      return json.data.url; // URL permanen ImgBB
+    }
+    console.warn('ImgBB upload gagal:', json);
+    return base64OrUrl; // fallback ke base64
+  } catch (err) {
+    console.warn('ImgBB upload error:', err);
+    return base64OrUrl; // fallback ke base64 jika error
+  }
+}
+
+/**
+ * Upload semua foto satu petani ke ImgBB
+ * Dipanggil saat "Kirim ke Google Sheets"
+ * Return: object petani dengan semua foto sudah jadi URL
+ */
+async function uploadSemuaFotoPetani(f, onProgress) {
+  const result = { ...f };
+  const nama   = f.nama.replace(/\s+/g, '_');
+
+  // Foto profil petani
+  if (f.foto && f.foto.startsWith('data:image')) {
+    if (onProgress) onProgress(`Upload foto ${f.nama}...`);
+    result.foto = await uploadFotoImgBB(f.foto, `petani_${nama}`);
+  }
+
+  // Foto lahan
+  if (f.lahan && f.lahan.length) {
+    result.lahan = await Promise.all(f.lahan.map(async (l, i) => {
+      const lResult = { ...l };
+      if (l.foto && l.foto.startsWith('data:image')) {
+        if (onProgress) onProgress(`Upload foto lahan ${l.nama || i+1}...`);
+        lResult.foto = await uploadFotoImgBB(l.foto, `lahan_${nama}_${i+1}`);
+      }
+      return lResult;
+    }));
+  }
+
+  // Foto tanaman
+  if (f.tanaman && f.tanaman.length) {
+    result.tanaman = await Promise.all(f.tanaman.map(async (t, i) => {
+      const tResult = { ...t };
+      if (t.foto && t.foto.startsWith('data:image')) {
+        if (onProgress) onProgress(`Upload foto tanaman ${t.jenis || i+1}...`);
+        tResult.foto = await uploadFotoImgBB(t.foto, `tanaman_${nama}_${t.jenis || i+1}`);
+      }
+      return tResult;
+    }));
+  }
+
+  return result;
+}
+
+/**
+ * Cek apakah petani punya foto yang belum di-upload (masih base64)
+ */
+function hitungFotoBelumUpload() {
+  let count = 0;
+  farmers.forEach(f => {
+    if (f.foto && f.foto.startsWith('data:image')) count++;
+    (f.lahan||[]).forEach(l => { if (l.foto && l.foto.startsWith('data:image')) count++; });
+    (f.tanaman||[]).forEach(t => { if (t.foto && t.foto.startsWith('data:image')) count++; });
+  });
+  return count;
+}
+
+// ============================================================
 //  INITIALIZATION
 // ============================================================
 
@@ -2026,39 +2123,55 @@ function exportExcel() {
   const wb = XLSXlib.utils.book_new();
   const tgl = new Date().toLocaleDateString('id-ID');
 
+  // ---- Helper: buat cell hyperlink untuk SheetJS ----
+  function xlsxLink(url, label) {
+    if (!url || !url.startsWith('http')) return url || '-';
+    return { t: 's', v: label || 'Lihat Foto', l: { Target: url } };
+  }
+
   // ---- Sheet 1: Data Petani ----
   const petaniData = [
-    ['ID','Nama','HP','Jenis Kelamin','Umur','Desa','Kecamatan','Kabupaten','Alamat','Kelompok Tani','Komoditas','Total Lahan (Ha)','Latitude','Longitude','Tgl Input']
+    ['ID','Nama','HP','Jenis Kelamin','Umur','Desa','Kecamatan','Kabupaten',
+     'Alamat','Kelompok Tani','Komoditas','Total Lahan (Ha)','Latitude','Longitude',
+     'Tgl Input','Foto Petani']
   ];
   farmers.forEach(f => {
     petaniData.push([
       f.id, f.nama, f.hp, f.jenisKelamin, f.umur,
       f.desa, f.kecamatan, f.kabupaten, f.alamat, f.kelompokTani, f.komoditas,
       (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
-      f.lat, f.lng, f.tanggalInput
+      f.lat, f.lng, f.tanggalInput,
+      xlsxLink(f.foto, 'Foto Petani')
     ]);
   });
   const wsPetani = XLSXlib.utils.aoa_to_sheet(petaniData);
-  // Lebar kolom
-  wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12].map(w=>({wch:w}));
+  wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12,18].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsPetani, 'Data Petani');
 
-  // ---- Sheet 2: Data Lahan ----
-  const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan']];
+  // ---- Sheet 2: Data Lahan (dengan foto) ----
+  const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan','Foto Lahan']];
   farmers.forEach(f => (f.lahan||[]).forEach(l => {
-    lahanData.push([l.id, f.nama, l.nama, l.luas, l.status, l.jenis, l.lat, l.lng, l.catatan]);
+    lahanData.push([
+      l.id, f.nama, l.nama, l.luas, l.status, l.jenis,
+      l.lat, l.lng, l.catatan,
+      xlsxLink(l.foto, 'Foto Lahan')
+    ]);
   }));
   const wsLahan = XLSXlib.utils.aoa_to_sheet(lahanData);
-  wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24].map(w=>({wch:w}));
+  wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24,18].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsLahan, 'Data Lahan');
 
-  // ---- Sheet 3: Data Tanaman ----
-  const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan']];
+  // ---- Sheet 3: Data Tanaman (dengan foto) ----
+  const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan','Foto Tanaman']];
   farmers.forEach(f => (f.tanaman||[]).forEach(t => {
-    tanamanData.push([t.id, f.nama, f.desa, t.jenis, t.luasTanam, t.umurTanaman, t.status, t.perkiraanPanen, t.catatan]);
+    tanamanData.push([
+      t.id, f.nama, f.desa, t.jenis, t.luasTanam, t.umurTanaman,
+      t.status, t.perkiraanPanen, t.catatan,
+      xlsxLink(t.foto, 'Foto Tanaman')
+    ]);
   }));
   const wsTanaman = XLSXlib.utils.aoa_to_sheet(tanamanData);
-  wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24].map(w=>({wch:w}));
+  wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24,18].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsTanaman, 'Data Tanaman');
 
   // ---- Sheet 4: Kunjungan ----
@@ -2393,18 +2506,31 @@ function exportToGoogleSheets() {
   // Update label jumlah data di modal
   const modal = document.getElementById('modalSheets');
   if (modal) {
-    const labels = modal.querySelectorAll('input[type="checkbox"] + span, label');
-    // Update checkbox labels dengan jumlah aktual
     const chkPetani    = document.getElementById('chkPetani');
     const chkKunjungan = document.getElementById('chkKunjungan');
     const chkProduksi  = document.getElementById('chkProduksi');
 
-    const totalKunjungan = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
-    const totalProduksi  = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
+    const totalKunjungan  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
+    const totalProduksi   = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
+    const fotoBelumUpload = hitungFotoBelumUpload();
 
     if (chkPetani)    chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`;
     if (chkKunjungan) chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`;
     if (chkProduksi)  chkProduksi.parentElement.innerHTML  = `<input type="checkbox" id="chkProduksi" checked /> Data Produksi (${totalProduksi} catatan)`;
+
+    // Info foto
+    const infoFoto = document.getElementById('sheetsInfoFoto');
+    if (infoFoto) {
+      if (!navigator.onLine) {
+        infoFoto.innerHTML = '<div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px;font-size:12px;color:#c0392b;margin-top:8px"><i class="fas fa-wifi-slash"></i> <b>Tidak ada koneksi.</b> Data teks tetap tersimpan lokal dan bisa dikirim saat ada sinyal. Foto akan di-upload otomatis saat kirim.</div>';
+      } else if (fotoBelumUpload > 0 && IMGBB_API_KEY !== 'GANTI_DENGAN_IMGBB_API_KEY_KAMU') {
+        infoFoto.innerHTML = `<div style="background:#e3effe;border:1px solid #93c5fd;border-radius:8px;padding:10px;font-size:12px;color:#1e40af;margin-top:8px"><i class="fas fa-cloud-upload-alt"></i> <b>${fotoBelumUpload} foto</b> akan di-upload ke cloud saat kamu klik Kirim. Link foto akan otomatis muncul di Google Sheets.</div>`;
+      } else if (fotoBelumUpload > 0) {
+        infoFoto.innerHTML = `<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:8px"><i class="fas fa-exclamation-triangle"></i> Ada <b>${fotoBelumUpload} foto</b> tersimpan lokal. Tambahkan ImgBB API key agar foto bisa di-upload ke cloud.</div>`;
+      } else {
+        infoFoto.innerHTML = '<div style="background:#e2f4e4;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:12px;color:#166534;margin-top:8px"><i class="fas fa-check-circle"></i> Semua foto sudah tersimpan di cloud. Link foto akan tampil di Google Sheets.</div>';
+      }
+    }
   }
 
   // Reset status
@@ -2438,37 +2564,63 @@ async function doSendToSheets() {
   setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data...');
   document.getElementById('btnKirimSheets').disabled = true;
 
-  // Siapkan payload
+  // Upload semua foto ke ImgBB dulu jika ada koneksi
+  const fotoBelumUpload = hitungFotoBelumUpload();
+  let farmersData = farmers;
+
+  if (fotoBelumUpload > 0 && navigator.onLine && IMGBB_API_KEY !== 'GANTI_DENGAN_IMGBB_API_KEY_KAMU') {
+    setSheetStatus('loading',
+      `<i class="fas fa-cloud-upload-alt fa-spin"></i> Upload ${fotoBelumUpload} foto ke cloud...`
+    );
+    // Upload foto semua petani
+    const uploadedFarmers = await Promise.all(
+      farmers.map(f => uploadSemuaFotoPetani(f, (msg) => {
+        setSheetStatus('loading', `<i class="fas fa-cloud-upload-alt fa-spin"></i> ${msg}`);
+      }))
+    );
+    // Simpan URL foto kembali ke localStorage
+    farmers = uploadedFarmers;
+    saveToStorage();
+    farmersData = uploadedFarmers;
+    setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data ke Google Sheets...');
+  }
+
+  // Siapkan payload dengan foto sudah jadi URL
   const payload = { pengirim };
 
   if (kirimPetani) {
-    payload.petani = farmers.map(f => ({
+    payload.petani = farmersData.map(f => ({
       id: f.id, nama: f.nama, hp: f.hp, jenisKelamin: f.jenisKelamin,
       umur: f.umur, desa: f.desa, kecamatan: f.kecamatan,
       kabupaten: f.kabupaten, alamat: f.alamat, kelompokTani: f.kelompokTani,
       komoditas: f.komoditas, lat: f.lat, lng: f.lng,
-      tanggalInput: f.tanggalInput, lahan: f.lahan || []
+      tanggalInput: f.tanggalInput,
+      fotoPetani: (f.foto && f.foto.startsWith('http')) ? f.foto : '',
+      lahan: (f.lahan||[]).map(l => ({
+        ...l,
+        fotoLahan: (l.foto && l.foto.startsWith('http')) ? l.foto : ''
+      })),
+      tanaman: (f.tanaman||[]).map(t => ({
+        ...t,
+        fotoTanaman: (t.foto && t.foto.startsWith('http')) ? t.foto : ''
+      }))
     }));
   }
 
   if (kirimKunjungan) {
     payload.kunjungan = [];
-    farmers.forEach(f => {
+    farmersData.forEach(f => {
       (f.kunjungan || []).forEach(k => {
-        payload.kunjungan.push({
-          ...k, farmerName: f.nama, farmerVillage: f.desa
-        });
+        payload.kunjungan.push({ ...k, farmerName: f.nama, farmerVillage: f.desa });
       });
     });
   }
 
   if (kirimProduksi) {
     payload.produksi = [];
-    farmers.forEach(f => {
+    farmersData.forEach(f => {
       (f.produksi || []).forEach(p => {
-        payload.produksi.push({
-          ...p, farmerName: f.nama, farmerVillage: f.desa
-        });
+        payload.produksi.push({ ...p, farmerName: f.nama, farmerVillage: f.desa });
       });
     });
   }
