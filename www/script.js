@@ -1064,6 +1064,7 @@ function unduhFoto(farmerId, type) {
   if (!f || !f.foto) { showToast('Tidak ada foto', 'error'); return; }
   const nama = cleanFileName(f.nama);
   _triggerDownload(f.foto, `${nama}.jpg`);
+  showToast(`Foto disimpan: ${nama}.jpg`, 'success');
 }
 
 /**
@@ -1077,6 +1078,7 @@ function unduhFotoLahan(farmerNama, lahanNama) {
   const lahan = cleanFileName(lahanNama);
   const filename = `${nama}_lahan_${lahan}.jpg`;
   _triggerDownload(l.foto, filename);
+  showToast(`Foto disimpan: ${filename}`, 'success');
 }
 
 /**
@@ -1090,38 +1092,17 @@ function unduhFotoTanaman(farmerNama, tanamanJenis) {
   const tanaman = cleanFileName(tanamanJenis);
   const filename = `${nama}_${tanaman}.jpg`;
   _triggerDownload(t.foto, filename);
+  showToast(`Foto disimpan: ${filename}`, 'success');
 }
 
 /**
  * Trigger download dari base64 data URL
- * Kompatibel dengan Android WebView tanpa Capacitor plugin
  */
 function _triggerDownload(dataUrl, filename) {
-  try {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: mime });
-    const blobUrl = URL.createObjectURL(blob);
-    const newTab = window.open(blobUrl, '_blank');
-    if (!newTab || newTab.closed) {
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    showToast('Foto dibuka — tekan tahan lalu pilih Simpan Gambar', 'info');
-  } catch (err) {
-    console.error('Download error:', err);
-    showToast('Gagal menyimpan foto', 'error');
-  }
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
 }
 
 function confirmDeleteFarmer(id) {
@@ -2250,4 +2231,145 @@ function getFallbackData() {
       tanaman:[], kunjungan:[], hama:[], produksi:[]
     },
   ];
+}
+
+// ============================================================
+//  GOOGLE SHEETS EXPORT
+// ============================================================
+
+// ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbycl-mfguVcZkL2Lo5ReCeKbzWErzB4n0hUXt1y-1-NW35UFo3IxhjFPnOftEJCh-fK/exec';
+
+/**
+ * Buka modal konfirmasi sebelum kirim ke Google Sheets
+ */
+function exportToGoogleSheets() {
+  if (!SHEETS_WEBHOOK_URL || SHEETS_WEBHOOK_URL === 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU') {
+    showToast('URL Google Sheets belum dikonfigurasi. Hubungi admin.', 'error');
+    return;
+  }
+
+  // Update label jumlah data di modal
+  const modal = document.getElementById('modalSheets');
+  if (modal) {
+    const labels = modal.querySelectorAll('input[type="checkbox"] + span, label');
+    // Update checkbox labels dengan jumlah aktual
+    const chkPetani    = document.getElementById('chkPetani');
+    const chkKunjungan = document.getElementById('chkKunjungan');
+    const chkProduksi  = document.getElementById('chkProduksi');
+
+    const totalKunjungan = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
+    const totalProduksi  = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
+
+    if (chkPetani)    chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`;
+    if (chkKunjungan) chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`;
+    if (chkProduksi)  chkProduksi.parentElement.innerHTML  = `<input type="checkbox" id="chkProduksi" checked /> Data Produksi (${totalProduksi} catatan)`;
+  }
+
+  // Reset status
+  const statusEl = document.getElementById('sheetsStatus');
+  if (statusEl) statusEl.style.display = 'none';
+
+  openModal('modalSheets');
+}
+
+/**
+ * Jalankan pengiriman data ke Google Sheets
+ */
+async function doSendToSheets() {
+  const pengirim = document.getElementById('sheetsPengirim')?.value?.trim();
+  if (!pengirim) {
+    showToast('Isi nama pengirim terlebih dahulu', 'error');
+    document.getElementById('sheetsPengirim').focus();
+    return;
+  }
+
+  const kirimPetani    = document.getElementById('chkPetani')?.checked;
+  const kirimKunjungan = document.getElementById('chkKunjungan')?.checked;
+  const kirimProduksi  = document.getElementById('chkProduksi')?.checked;
+
+  if (!kirimPetani && !kirimKunjungan && !kirimProduksi) {
+    showToast('Pilih minimal satu jenis data', 'error');
+    return;
+  }
+
+  // Tampilkan status loading
+  setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data...');
+  document.getElementById('btnKirimSheets').disabled = true;
+
+  // Siapkan payload
+  const payload = { pengirim };
+
+  if (kirimPetani) {
+    payload.petani = farmers.map(f => ({
+      id: f.id, nama: f.nama, hp: f.hp, jenisKelamin: f.jenisKelamin,
+      umur: f.umur, desa: f.desa, kecamatan: f.kecamatan,
+      kabupaten: f.kabupaten, alamat: f.alamat, kelompokTani: f.kelompokTani,
+      komoditas: f.komoditas, lat: f.lat, lng: f.lng,
+      tanggalInput: f.tanggalInput, lahan: f.lahan || []
+    }));
+  }
+
+  if (kirimKunjungan) {
+    payload.kunjungan = [];
+    farmers.forEach(f => {
+      (f.kunjungan || []).forEach(k => {
+        payload.kunjungan.push({
+          ...k, farmerName: f.nama, farmerVillage: f.desa
+        });
+      });
+    });
+  }
+
+  if (kirimProduksi) {
+    payload.produksi = [];
+    farmers.forEach(f => {
+      (f.produksi || []).forEach(p => {
+        payload.produksi.push({
+          ...p, farmerName: f.nama, farmerVillage: f.desa
+        });
+      });
+    });
+  }
+
+  try {
+    const res = await fetch(SHEETS_WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Apps Script tidak support CORS standar
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // mode: no-cors → response selalu opaque, tidak bisa baca body
+    // Jika sampai sini tanpa error = sukses
+    setSheetStatus('success',
+      `<i class="fas fa-check-circle"></i> Data berhasil dikirim ke Google Sheets! ` +
+      `Admin dapat melihat data di spreadsheet.`
+    );
+    showToast('Data berhasil dikirim ke Google Sheets', 'success');
+
+    // Catat waktu kirim terakhir
+    localStorage.setItem('tanimap_lastSync', new Date().toISOString());
+
+  } catch (err) {
+    console.error('Sheets error:', err);
+    setSheetStatus('error',
+      `<i class="fas fa-exclamation-circle"></i> Gagal mengirim: ${err.message}. ` +
+      `Periksa koneksi internet.`
+    );
+    showToast('Gagal mengirim ke Google Sheets', 'error');
+  } finally {
+    document.getElementById('btnKirimSheets').disabled = false;
+  }
+}
+
+/**
+ * Helper tampilkan status di modal
+ */
+function setSheetStatus(type, html) {
+  const el = document.getElementById('sheetsStatus');
+  if (!el) return;
+  el.style.display = 'flex';
+  el.className = `sheets-status ${type}`;
+  el.innerHTML = html;
 }
