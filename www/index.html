@@ -160,6 +160,9 @@
           <button class="btn btn-secondary btn-sm" onclick="resetMap()">
             <i class="fas fa-redo"></i> Reset
           </button>
+          <button class="btn btn-primary btn-sm" onclick="downloadMapPDF()" id="btnDownloadMap">
+            <i class="fas fa-file-pdf"></i> Download PDF
+          </button>
         </div>
         <div class="map-container" style="position:relative">
           <div id="map"></div>
@@ -716,6 +719,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- QRCode untuk kartu petani -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
