@@ -2523,3 +2523,168 @@ function closeFab() {
   document.getElementById('fabBtn').classList.remove('open');
   document.getElementById('fabOverlay').classList.remove('show');
 }
+
+// ============================================================
+//  DOWNLOAD PETA PDF
+// ============================================================
+
+async function downloadMapPDF() {
+  const btn = document.getElementById('btnDownloadMap');
+  const mapEl = document.getElementById('map');
+
+  if (!map) { showToast('Peta belum dimuat', 'error'); return; }
+
+  // Tombol loading state
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+  showToast('Membuat PDF peta...', 'info');
+
+  try {
+    // Tunggu semua tile peta selesai render
+    await new Promise(r => setTimeout(r, 800));
+
+    // Capture peta dengan html2canvas
+    const canvas = await html2canvas(mapEl, {
+      useCORS: true,
+      allowTaint: true,
+      scale: 2,
+      logging: false,
+      backgroundColor: '#f0f0f0',
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    // Setup jsPDF A4 landscape
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const PW = doc.internal.pageSize.getWidth();
+    const PH = doc.internal.pageSize.getHeight();
+
+    // ── Header hijau ──
+    doc.setFillColor(30, 92, 41);
+    doc.rect(0, 0, PW, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('TaniMap — Peta Sebaran Petani', 12, 11);
+
+    // Timestamp kanan
+    const tgl = new Date().toLocaleString('id-ID', {
+      day: '2-digit', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Makassar'
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(tgl + ' WITA', PW - 12, 11, { align: 'right' });
+
+    // Filter info
+    const village   = document.getElementById('mapFilterVillage')?.value || '';
+    const commodity = document.getElementById('mapFilterCommodity')?.value || '';
+    const filterTxt = [
+      village   ? `Desa: ${village}`         : 'Semua Desa',
+      commodity ? `Komoditas: ${commodity}`  : 'Semua Komoditas',
+      `Total Petani: ${mapMarkers.length} titik`
+    ].join('  |  ');
+    doc.setFontSize(7.5);
+    doc.setTextColor(200, 230, 200);
+    doc.text(filterTxt, 12, 16);
+
+    // ── Gambar peta ──
+    const mapW = PW - 52; // sisakan ruang legenda kanan
+    const mapH = PH - 30; // header 18 + padding bawah
+    const mapY = 20;
+
+    doc.addImage(imgData, 'JPEG', 10, mapY, mapW, mapH);
+
+    // Border peta
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.rect(10, mapY, mapW, mapH);
+
+    // ── Legenda kanan ──
+    const lgX  = mapW + 14;
+    const lgY  = mapY;
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(lgX, lgY, 36, mapH, 3, 3, 'FD');
+
+    doc.setTextColor(30, 92, 41);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('LEGENDA', lgX + 18, lgY + 8, { align: 'center' });
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(lgX + 4, lgY + 10, lgX + 32, lgY + 10);
+
+    const legenda = [
+      { label: 'Kopi Arabika',  color: [27,  94,  32]  },
+      { label: 'Kopi Robusta',  color: [46,  125, 50]  },
+      { label: 'Jagung',        color: [245, 127, 23]  },
+      { label: 'Padi',          color: [102, 187, 106] },
+      { label: 'Kakao',         color: [109, 76,  65]  },
+      { label: 'Cabai',         color: [229, 57,  53]  },
+      { label: 'Cengkeh',       color: [255, 112, 67]  },
+      { label: 'Vanili',        color: [142, 36,  170] },
+      { label: 'Lainnya',       color: [21,  101, 192] },
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    legenda.forEach((item, i) => {
+      const ly = lgY + 15 + i * 9;
+      doc.setFillColor(...item.color);
+      doc.circle(lgX + 8, ly, 2.5, 'F');
+      doc.setTextColor(60, 60, 60);
+      doc.text(item.label, lgX + 13, ly + 1);
+    });
+
+    // Jumlah petani per komoditas
+    const commCount = {};
+    farmers.forEach(f => {
+      commCount[f.komoditas] = (commCount[f.komoditas] || 0) + 1;
+    });
+
+    const statY = lgY + 15 + legenda.length * 9 + 6;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(lgX + 4, statY, lgX + 32, statY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 92, 41);
+    doc.text('STATISTIK', lgX + 18, statY + 6, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    let sy = statY + 12;
+    Object.entries(commCount).forEach(([k, v]) => {
+      if (sy < lgY + mapH - 6) {
+        doc.text(`${k}`, lgX + 5, sy);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${v}`, lgX + 32, sy, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        sy += 7;
+      }
+    });
+
+    // ── Footer ──
+    doc.setFillColor(245, 245, 245);
+    doc.rect(0, PH - 8, PW, 8, 'F');
+    doc.setTextColor(150, 150, 150);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text(
+      'TaniMap v1.0  •  Peta Sebaran Petani Kabupaten Manggarai  •  Dicetak: ' + tgl + ' WITA',
+      PW / 2, PH - 3, { align: 'center' }
+    );
+
+    // Simpan PDF
+    const namaFile = `TaniMap_Peta_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`;
+    doc.save(namaFile);
+    showToast('PDF peta berhasil didownload!', 'success');
+
+  } catch (err) {
+    console.error('Map PDF error:', err);
+    showToast('Gagal membuat PDF: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF';
+  }
+}
