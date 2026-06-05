@@ -32,16 +32,32 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Add storage permissions to AndroidManifest
+      - name: Patch AndroidManifest — permissions & geolocation
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # Tambah WRITE_EXTERNAL_STORAGE jika belum ada
+
+          # Storage permissions
           if ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
             sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />|' "$MANIFEST"
-            echo "Permissions added."
-          else
-            echo "Permissions already present."
+            echo "Storage permissions added."
           fi
+
+          # Geolocation permissions
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />|' "$MANIFEST"
+            echo "Location permissions added."
+          fi
+
+          # Enable geolocation di WebView — patch MainActivity
+          MAIN="android/app/src/main/java/com/johanmadajmjm/tanimap/MainActivity.java"
+          if [ -f "$MAIN" ] && ! grep -q "setGeolocationEnabled" "$MAIN"; then
+            sed -i 's/public class MainActivity extends BridgeActivity {/public class MainActivity extends BridgeActivity {\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        bridge.getWebView().getSettings().setGeolocationEnabled(true);\n        bridge.getWebView().getSettings().setGeolocationDatabasePath(getFilesDir().getAbsolutePath());\n    }/' "$MAIN"
+            # Tambah import Bundle
+            sed -i '1s/^/import android.os.Bundle;\n/' "$MAIN"
+            echo "WebView geolocation enabled."
+          fi
+
+          cat "$MANIFEST"
 
       - name: Setup Java
         uses: actions/setup-java@v4
