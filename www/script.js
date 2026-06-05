@@ -277,33 +277,49 @@ function renderFarmersGrid() {
 
 function farmerCardHTML(f) {
   const totalLahan = (f.lahan || []).reduce((s, l) => s + (parseFloat(l.luas) || 0), 0);
+  const initials   = f.nama.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
   const avatarHtml = f.foto
     ? `<div class="farmer-avatar"><img src="${f.foto}" alt="${f.nama}" /></div>`
-    : `<div class="farmer-avatar">👨‍🌾</div>`;
+    : `<div class="farmer-avatar" style="background:var(--green-100);color:var(--green-700);font-size:13px;font-weight:700;font-family:var(--font-body)">${initials}</div>`;
+
   return `
     <div class="farmer-card">
       <div class="farmer-card-top">
         ${avatarHtml}
         <div class="farmer-info">
           <div class="farmer-name">${f.nama}</div>
-          <div class="farmer-village"><i class="fas fa-map-marker-alt text-green" style="font-size:11px"></i> ${f.desa}, ${f.kecamatan}</div>
-          <div class="farmer-meta mt-1">
-            ${commodityBadge(f.komoditas)}
-          </div>
+          <div class="farmer-village"><i class="fas fa-map-marker-alt" style="font-size:10px;color:var(--green-400);margin-right:3px"></i>${f.desa}, ${f.kecamatan}</div>
         </div>
+        ${commodityBadge(f.komoditas)}
       </div>
+
       <div class="farmer-card-body">
-        <div class="info-grid" style="grid-template-columns:1fr 1fr;gap:8px">
-          <div><div class="info-key">Lahan</div><div class="info-value">${totalLahan.toFixed(2)} Ha</div></div>
-          <div><div class="info-key">Kelompok</div><div class="info-value">${f.kelompokTani || '-'}</div></div>
+        <div class="farmer-stat">
+          <div class="farmer-stat-val">${totalLahan.toFixed(2)} Ha</div>
+          <div class="farmer-stat-key">Lahan</div>
         </div>
-        ${f.lat && f.lng ? `<div class="gps-display mt-1"><i class="fas fa-map-pin"></i>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</div>` : ''}
+        <div class="farmer-stat-divider"></div>
+        <div class="farmer-stat">
+          <div class="farmer-stat-val">${f.kelompokTani || '—'}</div>
+          <div class="farmer-stat-key">Kelompok</div>
+        </div>
+        ${f.lat && f.lng ? `
+        <div class="farmer-stat-divider"></div>
+        <div class="farmer-stat">
+          <div class="farmer-stat-val" style="font-size:11px;color:var(--gray-400)">${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}</div>
+          <div class="farmer-stat-key">GPS</div>
+        </div>` : ''}
       </div>
+
       <div class="farmer-card-footer">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="openDetail('${f.id}')"><i class="fas fa-eye"></i> Detail</button>
-        <button class="btn btn-secondary btn-sm" onclick="cetakKartu('${f.id}')"><i class="fas fa-id-card"></i></button>
-        <button class="btn btn-secondary btn-sm" onclick="openEditFarmer('${f.id}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="confirmDeleteFarmer('${f.id}')"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="openDetail('${f.id}')">
+          <i class="fas fa-eye"></i> Detail
+        </button>
+        <div class="farmer-card-actions">
+          <button class="btn-card-action" title="Cetak Kartu" onclick="cetakKartu('${f.id}')"><i class="fas fa-id-card"></i></button>
+          <button class="btn-card-action" title="Edit" onclick="openEditFarmer('${f.id}')"><i class="fas fa-pen"></i></button>
+          <button class="btn-card-action danger" title="Hapus" onclick="confirmDeleteFarmer('${f.id}')"><i class="fas fa-trash"></i></button>
+        </div>
       </div>
     </div>
   `;
