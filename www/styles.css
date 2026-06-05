@@ -722,7 +722,39 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 .section-title::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
 
-/* ---- Report ---- */
+/* ---- Google Sheets Button ---- */
+.btn-sheets {
+  background: #0f9d58;
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(15,157,88,0.25);
+}
+.btn-sheets:hover {
+  background: #0b8043;
+  box-shadow: 0 4px 14px rgba(15,157,88,0.35);
+  transform: translateY(-1px);
+}
+.btn-sheets:active { transform: scale(0.97); }
+.btn-sheets:disabled {
+  background: var(--gray-300);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---- Sheets status box ---- */
+.sheets-status {
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.sheets-status.loading { background: var(--blue-100); color: var(--blue-600); }
+.sheets-status.success { background: var(--green-100); color: var(--green-700); }
+.sheets-status.error   { background: var(--red-100);  color: var(--red-500);  }
 .report-section { margin-bottom: 28px; }
 .report-table th, .report-table td { font-size: 13px; }
 .report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
