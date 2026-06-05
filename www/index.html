@@ -96,12 +96,21 @@
 
       <!-- ========== DASHBOARD ========== -->
       <div class="page active" id="page-dashboard">
-        <div class="stats-grid" id="statsGrid"></div>
-        <div class="charts-grid">
-          <div class="chart-card">
-            <div class="chart-title">📍 Petani per Desa</div>
-            <div class="chart-canvas-wrap"><canvas id="chartVillage"></canvas></div>
-          </div>
+
+        <!-- Baris 1: Total Petani, Total Lahan, Total Kunjungan -->
+        <div class="stats-grid stats-grid-primary" id="statsGridPrimary"></div>
+
+        <!-- Baris 2: Total Komoditas, Total Tanaman, Total Produksi -->
+        <div class="stats-grid stats-grid-secondary" id="statsGridSecondary"></div>
+
+        <!-- Baris 3: Grafik Petani per Desa (full width) -->
+        <div class="chart-card chart-card-full mb-2">
+          <div class="chart-title">📍 Petani per Desa</div>
+          <div class="chart-canvas-wrap" style="height:260px"><canvas id="chartVillage"></canvas></div>
+        </div>
+
+        <!-- Baris 4: Sebaran Komoditas + Produksi per Komoditas -->
+        <div class="charts-grid charts-grid-2">
           <div class="chart-card">
             <div class="chart-title">🌾 Sebaran Komoditas</div>
             <div class="chart-canvas-wrap"><canvas id="chartCommodity"></canvas></div>
