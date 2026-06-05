@@ -1086,7 +1086,7 @@ function unduhFoto(farmerId, type) {
   const f = farmers.find(x => x.id === farmerId);
   if (!f || !f.foto) { showToast('Tidak ada foto', 'error'); return; }
   const nama = cleanFileName(f.nama);
-  _triggerDownload(f.foto, `${nama}.jpg`);
+  bukaModalFoto(f.foto, `${nama}.jpg`, `Foto Petani — ${f.nama}`);
 }
 
 /**
@@ -1098,8 +1098,7 @@ function unduhFotoLahan(farmerNama, lahanNama) {
   if (!l || !l.foto) { showToast('Tidak ada foto lahan', 'error'); return; }
   const nama = cleanFileName(farmerNama);
   const lahan = cleanFileName(lahanNama);
-  const filename = `${nama}_lahan_${lahan}.jpg`;
-  _triggerDownload(l.foto, filename);
+  bukaModalFoto(l.foto, `${nama}_lahan_${lahan}.jpg`, `Foto Lahan — ${lahanNama}`);
 }
 
 /**
@@ -1111,34 +1110,56 @@ function unduhFotoTanaman(farmerNama, tanamanJenis) {
   if (!t || !t.foto) { showToast('Tidak ada foto tanaman', 'error'); return; }
   const nama = cleanFileName(farmerNama);
   const tanaman = cleanFileName(tanamanJenis);
-  const filename = `${nama}_${tanaman}.jpg`;
-  _triggerDownload(t.foto, filename);
+  bukaModalFoto(t.foto, `${nama}_${tanaman}.jpg`, `Foto Tanaman — ${tanamanJenis}`);
+}
+
+// Data foto yang sedang aktif di modal
+let _currentFotoData = null;
+let _currentFotoFilename = null;
+
+/**
+ * Tampilkan foto di modal popup — lalu user bisa simpan dari sana
+ */
+function _triggerDownload(dataUrl, filename) {
+  bukaModalFoto(dataUrl, filename, filename.replace(/_/g,' ').replace('.jpg',''));
 }
 
 /**
- * Trigger download dari base64 data URL
- * Kompatibel dengan Android WebView
+ * Buka modal viewer foto
  */
-function _triggerDownload(dataUrl, filename) {
+function bukaModalFoto(dataUrl, filename, judul) {
+  _currentFotoData     = dataUrl;
+  _currentFotoFilename = filename;
+
+  document.getElementById('modalFotoTitle').textContent = judul || 'Lihat Foto';
+  document.getElementById('modalFotoImg').src = dataUrl;
+  document.getElementById('modalFotoInfo').textContent = filename;
+  openModal('modalFotoViewer');
+}
+
+/**
+ * Simpan foto dari modal ke HP
+ */
+function simpanFotoModal() {
+  if (!_currentFotoData) return;
   try {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mime });
-    const blobUrl = URL.createObjectURL(blob);
-    const newTab = window.open(blobUrl, '_blank');
-    if (!newTab || newTab.closed) {
-      const a = document.createElement('a');
-      a.href = blobUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    showToast('Foto dibuka — tekan tahan lalu pilih Simpan Gambar', 'info');
+    const a = document.createElement('a');
+    a.href = _currentFotoData;
+    a.download = _currentFotoFilename || 'foto.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('Foto sedang disimpan...', 'success');
   } catch (err) {
-    console.error('Download error:', err);
-    showToast('Gagal menyimpan foto', 'error');
+    // Fallback: buka di tab baru agar user bisa tekan tahan → simpan
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh">
+        <img src="${_currentFotoData}" style="max-width:100%;max-height:100vh;object-fit:contain" />
+        </body></html>`);
+      w.document.close();
+      showToast('Tekan tahan foto → Simpan Gambar', 'info');
+    }
   }
 }
 
@@ -1179,7 +1200,7 @@ function openDetail(id) {
           background:rgba(0,0,0,.6);color:#fff;border:none;
           border-radius:50%;width:26px;height:26px;font-size:12px;
           cursor:pointer;display:flex;align-items:center;justify-content:center">
-          <i class='fas fa-download'></i>
+          <i class='fas fa-eye'></i>
         </button>
        </div>`
     : `<div class="detail-avatar">👨‍🌾</div>`;
@@ -1255,7 +1276,7 @@ function openDetail(id) {
                 background:rgba(0,0,0,.6);color:#fff;border:none;
                 border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;
                 cursor:pointer;display:flex;align-items:center;gap:4px">
-                <i class='fas fa-download'></i> Unduh
+                <i class='fas fa-eye'></i> Lihat
               </button>
             </div>` : ''}
         </div>
@@ -1291,7 +1312,7 @@ function openDetail(id) {
                 background:rgba(0,0,0,.6);color:#fff;border:none;
                 border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;
                 cursor:pointer;display:flex;align-items:center;gap:4px">
-                <i class='fas fa-download'></i> Unduh
+                <i class='fas fa-eye'></i> Lihat
               </button>
             </div>` : ''}
         </div>
