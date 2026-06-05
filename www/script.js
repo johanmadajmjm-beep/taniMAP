@@ -102,14 +102,6 @@ function navigate(page) {
     }
   });
 
-  // Update bottom nav
-  document.querySelectorAll('.bottom-nav-item').forEach(item => {
-    item.classList.remove('active');
-    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(`'${page}'`)) {
-      item.classList.add('active');
-    }
-  });
-
   // Update header
   const titles = {
     dashboard: ['Beranda', 'Ringkasan data pertanian'],
