@@ -350,46 +350,104 @@
 
       <!-- ========== SETTINGS ========== -->
       <div class="page" id="page-settings">
+
+        <!-- SECTION: Tampilan -->
+        <div class="settings-section-label">🎨 Tampilan</div>
         <div class="settings-grid">
 
+          <!-- Tema Warna -->
           <div class="settings-card">
-            <div class="settings-card-icon">🗑️</div>
-            <h3>Reset Semua Data</h3>
-            <p>Hapus semua data dari localStorage. Tindakan ini tidak bisa dibatalkan.</p>
-            <button class="btn btn-danger" onclick="confirmReset()"><i class="fas fa-trash"></i> Reset Data</button>
+            <div class="settings-card-header">
+              <div class="settings-card-icon-sm">🌗</div>
+              <div>
+                <div class="settings-card-title">Tema Warna</div>
+                <div class="settings-card-desc">Pilih tampilan terang atau gelap</div>
+              </div>
+            </div>
+            <div class="theme-toggle-wrap">
+              <button class="theme-btn active" id="themeLight" onclick="setTheme('light')">
+                <i class="fas fa-sun"></i> Terang
+              </button>
+              <button class="theme-btn" id="themeDark" onclick="setTheme('dark')">
+                <i class="fas fa-moon"></i> Gelap
+              </button>
+            </div>
           </div>
 
+          <!-- Ukuran Huruf -->
           <div class="settings-card">
-            <div class="settings-card-icon">ℹ️</div>
-            <h3>Informasi Aplikasi</h3>
-            <p>TaniMap v1.0 — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani Berbasis Lokasi.</p>
-            <span class="badge badge-green"><i class="fas fa-check-circle"></i> Offline Ready</span>
-          </div>
-
-          <div class="settings-card" style="grid-column: 1 / -1">
-            <div class="settings-card-icon">👤</div>
-            <h3>Kontak Pengembang</h3>
-            <div class="info-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); margin-top:8px">
+            <div class="settings-card-header">
+              <div class="settings-card-icon-sm">🔤</div>
               <div>
-                <div class="info-key">Nama</div>
-                <div class="info-value">Johan Mada</div>
+                <div class="settings-card-title">Ukuran Huruf</div>
+                <div class="settings-card-desc">Sesuaikan ukuran teks aplikasi</div>
               </div>
-              <div>
-                <div class="info-key">Nomor HP</div>
-                <div class="info-value">
-                  <a href="tel:085333068814" style="color:var(--green-600)">085 333 068 814</a>
-                </div>
-              </div>
-              <div>
-                <div class="info-key">Email</div>
-                <div class="info-value">
-                  <a href="mailto:johanmada.jm.jm@gmail.com" style="color:var(--green-600)">johanmada.jm.jm@gmail.com</a>
-                </div>
-              </div>
+            </div>
+            <div class="font-size-wrap">
+              <button class="font-btn" id="fontSmall" onclick="setFontSize('small')">
+                <span style="font-size:11px">A</span> Kecil
+              </button>
+              <button class="font-btn active" id="fontMedium" onclick="setFontSize('medium')">
+                <span style="font-size:14px">A</span> Sedang
+              </button>
+              <button class="font-btn" id="fontLarge" onclick="setFontSize('large')">
+                <span style="font-size:17px">A</span> Besar
+              </button>
+            </div>
+            <div class="font-preview" id="fontPreview">
+              Contoh teks dengan ukuran ini — TaniMap Sistem Informasi Petani.
             </div>
           </div>
 
         </div>
+
+        <!-- SECTION: Data -->
+        <div class="settings-section-label" style="margin-top:24px">🗄️ Data</div>
+        <div class="settings-grid">
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-card-icon-sm">🗑️</div>
+              <div>
+                <div class="settings-card-title">Reset Semua Data</div>
+                <div class="settings-card-desc">Hapus semua data dari penyimpanan lokal. Tidak bisa dibatalkan.</div>
+              </div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="confirmReset()">
+              <i class="fas fa-trash"></i> Reset Data
+            </button>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-card-icon-sm">ℹ️</div>
+              <div>
+                <div class="settings-card-title">Informasi Aplikasi</div>
+                <div class="settings-card-desc">TaniMap v1.0 — Sistem Informasi Petani Berbasis Lokasi.</div>
+              </div>
+            </div>
+            <span class="badge badge-green"><i class="fas fa-check-circle"></i> Offline Ready</span>
+          </div>
+
+        </div>
+
+        <!-- SECTION: Kontak -->
+        <div class="settings-section-label" style="margin-top:24px">👤 Pengembang</div>
+        <div class="settings-card settings-card-developer">
+          <div class="developer-avatar">JM</div>
+          <div class="developer-info">
+            <div class="developer-name">Johan Mada</div>
+            <div class="developer-links">
+              <a href="tel:085333068814" class="developer-link">
+                <i class="fas fa-phone"></i> 085 333 068 814
+              </a>
+              <a href="mailto:johanmada.jm.jm@gmail.com" class="developer-link">
+                <i class="fas fa-envelope"></i> johanmada.jm.jm@gmail.com
+              </a>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </main>
