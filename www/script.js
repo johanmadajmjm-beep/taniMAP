@@ -1094,7 +1094,7 @@ function unduhFotoTanaman(farmerNama, tanamanJenis) {
 
 /**
  * Trigger download dari base64 data URL
- * Kompatibel dengan Android WebView (tanpa Capacitor plugin)
+ * Kompatibel dengan Android WebView tanpa Capacitor plugin
  */
 function _triggerDownload(dataUrl, filename) {
   try {
@@ -1107,8 +1107,6 @@ function _triggerDownload(dataUrl, filename) {
     }
     const blob = new Blob([bytes], { type: mime });
     const blobUrl = URL.createObjectURL(blob);
-
-    // Di Android WebView, window.open blob URL memicu dialog simpan sistem
     const newTab = window.open(blobUrl, '_blank');
     if (!newTab || newTab.closed) {
       const a = document.createElement('a');
