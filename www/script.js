@@ -2372,3 +2372,54 @@ function setSheetStatus(type, html) {
   el.className = `sheets-status ${type}`;
   el.innerHTML = html;
 }
+
+// ============================================================
+//  TEMA & UKURAN HURUF
+// ============================================================
+
+/**
+ * Set tema warna (light / dark) dan simpan ke localStorage
+ */
+function setTheme(theme) {
+  document.body.classList.toggle('dark', theme === 'dark');
+  localStorage.setItem('tanimap_theme', theme);
+
+  // Update tombol aktif
+  document.getElementById('themeLight')?.classList.toggle('active', theme === 'light');
+  document.getElementById('themeDark')?.classList.toggle('active', theme === 'dark');
+}
+
+/**
+ * Set ukuran huruf (small / medium / large) dan simpan ke localStorage
+ */
+function setFontSize(size) {
+  document.body.classList.remove('font-small', 'font-medium', 'font-large');
+  document.body.classList.add('font-' + size);
+  localStorage.setItem('tanimap_fontsize', size);
+
+  // Update tombol aktif
+  ['Small','Medium','Large'].forEach(s => {
+    document.getElementById('font' + s)?.classList.toggle('active', s.toLowerCase() === size);
+  });
+
+  // Update preview teks
+  const sizes = { small: '12px', medium: '14px', large: '16px' };
+  const preview = document.getElementById('fontPreview');
+  if (preview) preview.style.fontSize = sizes[size];
+}
+
+/**
+ * Muat preferensi tema & font saat app pertama dibuka
+ */
+function loadAppPreferences() {
+  const theme    = localStorage.getItem('tanimap_theme')    || 'light';
+  const fontSize = localStorage.getItem('tanimap_fontsize') || 'medium';
+  setTheme(theme);
+  setFontSize(fontSize);
+}
+
+// Panggil saat DOM siap — tambahkan ke DOMContentLoaded yang sudah ada
+// Fungsi ini dipanggil manual di bawah inisialisasi
+document.addEventListener('DOMContentLoaded', () => {
+  loadAppPreferences();
+});
