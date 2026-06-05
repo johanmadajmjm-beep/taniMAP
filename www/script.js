@@ -2572,12 +2572,14 @@ async function doSendToSheets() {
     setSheetStatus('loading',
       `<i class="fas fa-cloud-upload-alt fa-spin"></i> Upload ${fotoBelumUpload} foto ke cloud...`
     );
-    // Upload foto semua petani
-    const uploadedFarmers = await Promise.all(
-      farmers.map(f => uploadSemuaFotoPetani(f, (msg) => {
+    // Upload foto SEQUENTIAL (satu per satu) agar URL tersimpan sebelum lanjut
+    const uploadedFarmers = [];
+    for (const f of farmers) {
+      const uploaded = await uploadSemuaFotoPetani(f, (msg) => {
         setSheetStatus('loading', `<i class="fas fa-cloud-upload-alt fa-spin"></i> ${msg}`);
-      }))
-    );
+      });
+      uploadedFarmers.push(uploaded);
+    }
     // Simpan URL foto kembali ke localStorage
     farmers = uploadedFarmers;
     saveToStorage();
@@ -2595,14 +2597,14 @@ async function doSendToSheets() {
       kabupaten: f.kabupaten, alamat: f.alamat, kelompokTani: f.kelompokTani,
       komoditas: f.komoditas, lat: f.lat, lng: f.lng,
       tanggalInput: f.tanggalInput,
-      fotoPetani: (f.foto && f.foto.startsWith('http')) ? f.foto : '',
+      fotoPetani: (f.foto && f.foto.startsWith('http')) ? f.foto : (f.fotoPetani || ''),
       lahan: (f.lahan||[]).map(l => ({
         ...l,
-        fotoLahan: (l.foto && l.foto.startsWith('http')) ? l.foto : ''
+        fotoLahan: (l.foto && l.foto.startsWith('http')) ? l.foto : (l.fotoLahan || '')
       })),
       tanaman: (f.tanaman||[]).map(t => ({
         ...t,
-        fotoTanaman: (t.foto && t.foto.startsWith('http')) ? t.foto : ''
+        fotoTanaman: (t.foto && t.foto.startsWith('http')) ? t.foto : (t.fotoTanaman || '')
       }))
     }));
   }
