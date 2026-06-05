@@ -133,9 +133,18 @@ async function loadFromStorage() {
   const stored = localStorage.getItem('tanimap_farmers');
   if (stored) {
     farmers = JSON.parse(stored);
+    // Bersihkan URL ImgBB yang rusak — reset ke base64 tidak ada
+    // Foto yang sudah jadi URL ImgBB (i.ibb.co) dihapus karena domain rusak
+    let cleaned = false;
+    farmers.forEach(f => {
+      if (f.foto && f.foto.includes('i.ibb.co')) { f.foto = ''; cleaned = true; }
+      (f.lahan||[]).forEach(l => { if (l.foto && l.foto.includes('i.ibb.co')) { l.foto = ''; cleaned = true; } });
+      (f.tanaman||[]).forEach(t => { if (t.foto && t.foto.includes('i.ibb.co')) { t.foto = ''; cleaned = true; } });
+    });
+    if (cleaned) { saveToStorage(); console.log('URL ImgBB lama dibersihkan'); }
   } else {
     await loadSampleData();
-    return; // loadSampleData juga memanggil refresh
+    return;
   }
   refreshAll();
 }
