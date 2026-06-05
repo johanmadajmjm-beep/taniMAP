@@ -2407,6 +2407,7 @@ function sendViaForm(payload) {
 
     form.submit();
   });
+}
 
 /**
  * Helper tampilkan status di modal
