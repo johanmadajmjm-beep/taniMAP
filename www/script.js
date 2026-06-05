@@ -14,106 +14,6 @@ let mapMarkers = [];        // Array marker di peta
 let charts = {};            // Chart.js instances
 let currentPage = 'dashboard';  // Halaman aktif
 
-// ============================================================
-//  CLOUDINARY CONFIG — gratis, no hotlink restriction
-//  Daftar di https://cloudinary.com → gratis 25GB
-//  Upload Preset: buat di Settings → Upload → Add upload preset
-//  Set "Signing Mode" = Unsigned
-// ============================================================
-const CLOUDINARY_CLOUD_NAME = 'dgvuhgb5o';
-const CLOUDINARY_UPLOAD_PRESET = 'nazkc08a';
-
-/**
- * Upload satu foto (base64) ke Cloudinary
- * Return: URL foto jika berhasil, base64 asli jika gagal/offline
- */
-async function uploadFotoImgBB(base64OrUrl, namaFile) {
-  // Kalau sudah URL — skip
-  if (!base64OrUrl || base64OrUrl.startsWith('http')) return base64OrUrl;
-  // Kalau bukan base64 image — skip
-  if (!base64OrUrl.startsWith('data:image')) return base64OrUrl;
-  // Kalau offline — simpan base64 dulu
-  if (!navigator.onLine) return base64OrUrl;
-  // Kalau belum dikonfigurasi — skip
-  if (CLOUDINARY_CLOUD_NAME === 'GANTI_CLOUD_NAME') return base64OrUrl;
-
-  try {
-    const formData = new FormData();
-    formData.append('file', base64OrUrl);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('public_id', 'tanimap/' + (namaFile || Date.now()).replace(/\s+/g, '_'));
-
-    const res  = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      { method: 'POST', body: formData }
-    );
-    const json = await res.json();
-
-    if (json.secure_url) {
-      return json.secure_url; // URL HTTPS permanen Cloudinary
-    }
-    console.warn('Cloudinary upload gagal:', json);
-    return base64OrUrl;
-  } catch (err) {
-    console.warn('Cloudinary upload error:', err);
-    return base64OrUrl;
-  }
-}
-
-/**
- * Upload semua foto satu petani ke ImgBB
- * Dipanggil saat "Kirim ke Google Sheets"
- * Return: object petani dengan semua foto sudah jadi URL
- */
-async function uploadSemuaFotoPetani(f, onProgress) {
-  const result = { ...f };
-  const nama   = f.nama.replace(/\s+/g, '_');
-
-  // Foto profil petani
-  if (f.foto && f.foto.startsWith('data:image')) {
-    if (onProgress) onProgress(`Upload foto ${f.nama}...`);
-    result.foto = await uploadFotoImgBB(f.foto, `petani_${nama}`);
-  }
-
-  // Foto lahan
-  if (f.lahan && f.lahan.length) {
-    result.lahan = await Promise.all(f.lahan.map(async (l, i) => {
-      const lResult = { ...l };
-      if (l.foto && l.foto.startsWith('data:image')) {
-        if (onProgress) onProgress(`Upload foto lahan ${l.nama || i+1}...`);
-        lResult.foto = await uploadFotoImgBB(l.foto, `lahan_${nama}_${i+1}`);
-      }
-      return lResult;
-    }));
-  }
-
-  // Foto tanaman
-  if (f.tanaman && f.tanaman.length) {
-    result.tanaman = await Promise.all(f.tanaman.map(async (t, i) => {
-      const tResult = { ...t };
-      if (t.foto && t.foto.startsWith('data:image')) {
-        if (onProgress) onProgress(`Upload foto tanaman ${t.jenis || i+1}...`);
-        tResult.foto = await uploadFotoImgBB(t.foto, `tanaman_${nama}_${t.jenis || i+1}`);
-      }
-      return tResult;
-    }));
-  }
-
-  return result;
-}
-
-/**
- * Cek apakah petani punya foto yang belum di-upload (masih base64)
- */
-function hitungFotoBelumUpload() {
-  let count = 0;
-  farmers.forEach(f => {
-    if (f.foto && f.foto.startsWith('data:image')) count++;
-    (f.lahan||[]).forEach(l => { if (l.foto && l.foto.startsWith('data:image')) count++; });
-    (f.tanaman||[]).forEach(t => { if (t.foto && t.foto.startsWith('data:image')) count++; });
-  });
-  return count;
-}
 
 // ============================================================
 //  INITIALIZATION
@@ -133,15 +33,7 @@ async function loadFromStorage() {
   const stored = localStorage.getItem('tanimap_farmers');
   if (stored) {
     farmers = JSON.parse(stored);
-    // Bersihkan URL ImgBB yang rusak — reset ke base64 tidak ada
-    // Foto yang sudah jadi URL ImgBB (i.ibb.co) dihapus karena domain rusak
-    let cleaned = false;
-    farmers.forEach(f => {
-      if (f.foto && f.foto.includes('i.ibb.co')) { f.foto = ''; cleaned = true; }
-      (f.lahan||[]).forEach(l => { if (l.foto && l.foto.includes('i.ibb.co')) { l.foto = ''; cleaned = true; } });
-      (f.tanaman||[]).forEach(t => { if (t.foto && t.foto.includes('i.ibb.co')) { t.foto = ''; cleaned = true; } });
-    });
-    if (cleaned) { saveToStorage(); console.log('URL ImgBB lama dibersihkan'); }
+
   } else {
     await loadSampleData();
     return;
@@ -2525,7 +2417,6 @@ function exportToGoogleSheets() {
 
     const totalKunjungan  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
     const totalProduksi   = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
-    const fotoBelumUpload = hitungFotoBelumUpload();
 
     if (chkPetani)    chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`;
     if (chkKunjungan) chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`;
@@ -2536,7 +2427,6 @@ function exportToGoogleSheets() {
     if (infoFoto) {
       if (!navigator.onLine) {
         infoFoto.innerHTML = '<div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px;font-size:12px;color:#c0392b;margin-top:8px"><i class="fas fa-wifi-slash"></i> <b>Tidak ada koneksi.</b> Data teks tetap tersimpan lokal dan bisa dikirim saat ada sinyal. Foto akan di-upload otomatis saat kirim.</div>';
-      } else if (fotoBelumUpload > 0 && IMGBB_API_KEY !== 'GANTI_DENGAN_IMGBB_API_KEY_KAMU') {
         infoFoto.innerHTML = `<div style="background:#e3effe;border:1px solid #93c5fd;border-radius:8px;padding:10px;font-size:12px;color:#1e40af;margin-top:8px"><i class="fas fa-cloud-upload-alt"></i> <b>${fotoBelumUpload} foto</b> akan di-upload ke cloud saat kamu klik Kirim. Link foto akan otomatis muncul di Google Sheets.</div>`;
       } else if (fotoBelumUpload > 0) {
         infoFoto.innerHTML = `<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:8px"><i class="fas fa-exclamation-triangle"></i> Ada <b>${fotoBelumUpload} foto</b> tersimpan lokal. Tambahkan ImgBB API key agar foto bisa di-upload ke cloud.</div>`;
@@ -2577,48 +2467,16 @@ async function doSendToSheets() {
   setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data...');
   document.getElementById('btnKirimSheets').disabled = true;
 
-  // Upload semua foto ke ImgBB dulu jika ada koneksi
-  const fotoBelumUpload = hitungFotoBelumUpload();
-  let farmersData = farmers;
-
-  if (fotoBelumUpload > 0 && navigator.onLine && CLOUDINARY_CLOUD_NAME !== 'GANTI_CLOUD_NAME') {
-    setSheetStatus('loading',
-      `<i class="fas fa-cloud-upload-alt fa-spin"></i> Upload ${fotoBelumUpload} foto ke cloud...`
-    );
-    // Upload foto SEQUENTIAL (satu per satu) agar URL tersimpan sebelum lanjut
-    const uploadedFarmers = [];
-    for (const f of farmers) {
-      const uploaded = await uploadSemuaFotoPetani(f, (msg) => {
-        setSheetStatus('loading', `<i class="fas fa-cloud-upload-alt fa-spin"></i> ${msg}`);
-      });
-      uploadedFarmers.push(uploaded);
-    }
-    // Simpan URL foto kembali ke localStorage
-    farmers = uploadedFarmers;
-    saveToStorage();
-    farmersData = uploadedFarmers;
-    setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data ke Google Sheets...');
-  }
-
-  // Siapkan payload dengan foto sudah jadi URL
+  // Siapkan payload
   const payload = { pengirim };
 
   if (kirimPetani) {
-    payload.petani = farmersData.map(f => ({
+    payload.petani = farmers.map(f => ({
       id: f.id, nama: f.nama, hp: f.hp, jenisKelamin: f.jenisKelamin,
       umur: f.umur, desa: f.desa, kecamatan: f.kecamatan,
       kabupaten: f.kabupaten, alamat: f.alamat, kelompokTani: f.kelompokTani,
       komoditas: f.komoditas, lat: f.lat, lng: f.lng,
-      tanggalInput: f.tanggalInput,
-      fotoPetani: (f.foto && f.foto.startsWith('http')) ? f.foto : (f.fotoPetani || ''),
-      lahan: (f.lahan||[]).map(l => ({
-        ...l,
-        fotoLahan: (l.foto && l.foto.startsWith('http')) ? l.foto : (l.fotoLahan || '')
-      })),
-      tanaman: (f.tanaman||[]).map(t => ({
-        ...t,
-        fotoTanaman: (t.foto && t.foto.startsWith('http')) ? t.foto : (t.fotoTanaman || '')
-      }))
+      tanggalInput: f.tanggalInput, lahan: f.lahan || []
     }));
   }
 
