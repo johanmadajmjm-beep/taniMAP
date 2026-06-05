@@ -158,29 +158,37 @@ function renderDashboard() {
 
 function renderStats() {
   const totalFarmers = farmers.length;
-  const totalLahan = farmers.reduce((s, f) => s + (f.lahan || []).reduce((a, l) => a + (parseFloat(l.luas) || 0), 0), 0);
+  const totalLahan   = farmers.reduce((s, f) => s + (f.lahan || []).reduce((a, l) => a + (parseFloat(l.luas) || 0), 0), 0);
   const komoditasSet = new Set(farmers.map(f => f.komoditas));
-  const totalVisits = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
-  const totalProd = farmers.reduce((s, f) => s + (f.produksi || []).reduce((a, p) => a + (parseFloat(p.jumlah) || 0), 0), 0);
+  const totalVisits  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
+  const totalProd    = farmers.reduce((s, f) => s + (f.produksi || []).reduce((a, p) => a + (parseFloat(p.jumlah) || 0), 0), 0);
   const totalTanaman = farmers.reduce((s, f) => s + (f.tanaman || []).length, 0);
 
-  const stats = [
-    { icon: '👨‍🌾', label: 'Total Petani', value: totalFarmers, color: 'green' },
-    { icon: '🌾', label: 'Total Komoditas', value: komoditasSet.size, color: 'orange' },
-    { icon: '🗺️', label: 'Total Lahan (Ha)', value: totalLahan.toFixed(2), color: 'blue' },
-    { icon: '📋', label: 'Total Kunjungan', value: totalVisits, color: 'brown' },
-    { icon: '🌱', label: 'Total Tanaman', value: totalTanaman, color: 'green' },
-    { icon: '📦', label: 'Total Produksi', value: totalProd.toFixed(0) + ' Kg/Ton', color: 'orange' },
+  function cardHTML(s) {
+    return `
+      <div class="stat-card">
+        <div class="stat-icon ${s.color}">${s.icon}</div>
+        <div class="stat-value">${s.value}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>`;
+  }
+
+  // Baris 1: data utama
+  const primary = [
+    { icon: '👨‍🌾', label: 'Total Petani',     value: totalFarmers,              color: 'green'  },
+    { icon: '🗺️',  label: 'Total Lahan (Ha)',  value: totalLahan.toFixed(2),     color: 'blue'   },
+    { icon: '📋',  label: 'Total Kunjungan',   value: totalVisits,               color: 'brown'  },
   ];
 
-  const grid = document.getElementById('statsGrid');
-  grid.innerHTML = stats.map(s => `
-    <div class="stat-card">
-      <div class="stat-icon ${s.color}">${s.icon}</div>
-      <div class="stat-value">${s.value}</div>
-      <div class="stat-label">${s.label}</div>
-    </div>
-  `).join('');
+  // Baris 2: data pendukung
+  const secondary = [
+    { icon: '🌾',  label: 'Total Komoditas',   value: komoditasSet.size,         color: 'orange' },
+    { icon: '🌱',  label: 'Total Tanaman',      value: totalTanaman,              color: 'green'  },
+    { icon: '📦',  label: 'Total Produksi',     value: totalProd.toFixed(0) + ' Kg/Ton', color: 'orange' },
+  ];
+
+  document.getElementById('statsGridPrimary').innerHTML   = primary.map(cardHTML).join('');
+  document.getElementById('statsGridSecondary').innerHTML = secondary.map(cardHTML).join('');
 }
 
 function renderCharts() {
