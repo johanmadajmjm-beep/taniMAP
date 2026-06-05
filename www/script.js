@@ -32,8 +32,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadFromStorage() {
   const stored = localStorage.getItem('tanimap_farmers');
   if (stored) {
-    farmers = JSON.parse(stored);
-
+    try { farmers = JSON.parse(stored); } catch(e) { farmers = []; }
+    // Bersihkan URL foto rusak — hanya simpan base64
+    let cleaned = false;
+    farmers.forEach(f => {
+      if (f.foto && !f.foto.startsWith('data:image')) { f.foto = ''; cleaned = true; }
+      (f.lahan||[]).forEach(l => { if (l.foto && !l.foto.startsWith('data:image')) { l.foto = ''; cleaned = true; } });
+      (f.tanaman||[]).forEach(t => { if (t.foto && !t.foto.startsWith('data:image')) { t.foto = ''; cleaned = true; } });
+    });
+    if (cleaned) saveToStorage();
   } else {
     await loadSampleData();
     return;
@@ -2442,9 +2449,9 @@ function exportToGoogleSheets() {
     const totalKunjungan  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
     const totalProduksi   = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
 
-    if (chkPetani)    chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`;
-    if (chkKunjungan) chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`;
-    if (chkProduksi)  chkProduksi.parentElement.innerHTML  = `<input type="checkbox" id="chkProduksi" checked /> Data Produksi (${totalProduksi} catatan)`;
+    if (chkPetani)    { chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`; }
+    if (chkKunjungan) { chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`; }
+    if (chkProduksi)  { chkProduksi.parentElement.innerHTML  = `<input type="checkbox" id="chkProduksi" checked /> Data Produksi (${totalProduksi} catatan)`; }
 
     // Info foto
     const infoFoto = document.getElementById('sheetsInfoFoto');
@@ -2487,45 +2494,51 @@ async function doSendToSheets() {
     return;
   }
 
-  // Tampilkan status loading
+  // Tampilkan loading dan disable tombol
   setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data...');
   document.getElementById('btnKirimSheets').disabled = true;
 
-  // Siapkan payload
+  // Siapkan payload — gunakan farmers (bukan farmersData)
   const payload = { pengirim };
 
   if (kirimPetani) {
     payload.petani = farmers.map(f => ({
-      id: f.id, nama: f.nama, hp: f.hp, jenisKelamin: f.jenisKelamin,
-      umur: f.umur, desa: f.desa, kecamatan: f.kecamatan,
-      kabupaten: f.kabupaten, alamat: f.alamat, kelompokTani: f.kelompokTani,
-      komoditas: f.komoditas, lat: f.lat, lng: f.lng,
-      tanggalInput: f.tanggalInput, lahan: f.lahan || []
+      id: f.id, nama: f.nama, hp: f.hp || '',
+      jenisKelamin: f.jenisKelamin || '', umur: f.umur || '',
+      desa: f.desa, kecamatan: f.kecamatan,
+      kabupaten: f.kabupaten || '', alamat: f.alamat || '',
+      kelompokTani: f.kelompokTani || '',
+      komoditas: f.komoditas, lat: f.lat || '', lng: f.lng || '',
+      tanggalInput: f.tanggalInput || '',
+      lahan: (f.lahan || []).map(l => ({
+        id: l.id, nama: l.nama, luas: l.luas,
+        status: l.status, jenis: l.jenis,
+        lat: l.lat || '', lng: l.lng || '', catatan: l.catatan || ''
+      }))
     }));
   }
 
   if (kirimKunjungan) {
     payload.kunjungan = [];
-    farmersData.forEach(f => {
+    farmers.forEach(f => {
       (f.kunjungan || []).forEach(k => {
-        payload.kunjungan.push({ ...k, farmerName: f.nama, farmerVillage: f.desa });
+        payload.kunjungan.push({
+          ...k, farmerName: f.nama, farmerVillage: f.desa
+        });
       });
     });
   }
 
   if (kirimProduksi) {
     payload.produksi = [];
-    farmersData.forEach(f => {
+    farmers.forEach(f => {
       (f.produksi || []).forEach(p => {
-        payload.produksi.push({ ...p, farmerName: f.nama, farmerVillage: f.desa });
+        payload.produksi.push({
+          ...p, farmerName: f.nama, farmerVillage: f.desa
+        });
       });
     });
   }
-
-  // Kirim semua data sekaligus via hidden form POST
-  // Form submission tidak diblokir CORS — bekerja dari domain manapun
-  setSheetStatus('loading', '<i class="fas fa-spinner fa-spin"></i> Mengirim data...');
-  document.getElementById('btnKirimSheets').disabled = true;
 
   try {
     await sendViaForm(payload);
@@ -2574,13 +2587,11 @@ function sendViaForm(payload) {
 
     document.body.appendChild(form);
 
-    // Timeout 25 detik
+    // Timeout 15 detik lalu resolve (anggap berhasil)
     const timer = setTimeout(() => {
       cleanup();
-      // Form POST ke Apps Script tidak bisa dibaca response-nya (cross-origin)
-      // Tapi jika tidak ada error dalam 25 detik, anggap berhasil
       resolve('ok');
-    }, 5000);
+    }, 15000);
 
     iframe.onload = () => {
       clearTimeout(timer);
