@@ -21,54 +21,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Add Android platform (skip if already exists)
+      - name: Add Android platform
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
           else
-            echo "Android platform already exists, skipping."
+            echo "Android already exists, skipping."
           fi
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Patch AndroidManifest — permissions
+      - name: Add permissions to AndroidManifest
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-
-          # Location permissions
           if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
-            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />|' "$MANIFEST"
-            echo "Location permissions added."
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />|' "$MANIFEST"
+            echo "Permissions added."
           else
-            echo "Location permissions already present."
+            echo "Permissions already present."
           fi
-
-          # Storage permissions
-          if ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
-            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />|' "$MANIFEST"
-            echo "Storage permissions added."
-          else
-            echo "Storage permissions already present."
-          fi
-
-          echo "Final manifest:"
-          cat "$MANIFEST"
-
-      - name: Enable WebView geolocation via XML override
-        run: |
-          # Buat file network security config untuk allow geolocation
-          mkdir -p android/app/src/main/res/xml
-          cat > android/app/src/main/res/xml/config.xml << 'XMLEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" id="com.johanmadajmjm.tanimap">
-    <access origin="*" />
-    <allow-navigation href="*" />
-    <allow-intent href="*" />
-    <preference name="Geolocation" value="true" />
-</widget>
-XMLEOF
-          echo "WebView config created."
 
       - name: Setup Java
         uses: actions/setup-java@v4
