@@ -1064,7 +1064,6 @@ function unduhFoto(farmerId, type) {
   if (!f || !f.foto) { showToast('Tidak ada foto', 'error'); return; }
   const nama = cleanFileName(f.nama);
   _triggerDownload(f.foto, `${nama}.jpg`);
-  showToast(`Foto disimpan: ${nama}.jpg`, 'success');
 }
 
 /**
@@ -1078,7 +1077,6 @@ function unduhFotoLahan(farmerNama, lahanNama) {
   const lahan = cleanFileName(lahanNama);
   const filename = `${nama}_lahan_${lahan}.jpg`;
   _triggerDownload(l.foto, filename);
-  showToast(`Foto disimpan: ${filename}`, 'success');
 }
 
 /**
@@ -1092,17 +1090,40 @@ function unduhFotoTanaman(farmerNama, tanamanJenis) {
   const tanaman = cleanFileName(tanamanJenis);
   const filename = `${nama}_${tanaman}.jpg`;
   _triggerDownload(t.foto, filename);
-  showToast(`Foto disimpan: ${filename}`, 'success');
 }
 
 /**
  * Trigger download dari base64 data URL
+ * Kompatibel dengan Android WebView (tanpa Capacitor plugin)
  */
 function _triggerDownload(dataUrl, filename) {
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = filename;
-  a.click();
+  try {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mime });
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Di Android WebView, window.open blob URL memicu dialog simpan sistem
+    const newTab = window.open(blobUrl, '_blank');
+    if (!newTab || newTab.closed) {
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    showToast('Foto dibuka — tekan tahan lalu pilih Simpan Gambar', 'info');
+  } catch (err) {
+    console.error('Download error:', err);
+    showToast('Gagal menyimpan foto', 'error');
+  }
 }
 
 function confirmDeleteFarmer(id) {
