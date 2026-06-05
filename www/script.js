@@ -2499,3 +2499,27 @@ function loadAppPreferences() {
 document.addEventListener('DOMContentLoaded', () => {
   loadAppPreferences();
 });
+
+// ============================================================
+//  FAB — Floating Action Button
+// ============================================================
+
+let fabOpen = false;
+
+function toggleFab() {
+  fabOpen ? closeFab() : openFab();
+}
+
+function openFab() {
+  fabOpen = true;
+  document.getElementById('fabMenu').classList.add('open');
+  document.getElementById('fabBtn').classList.add('open');
+  document.getElementById('fabOverlay').classList.add('show');
+}
+
+function closeFab() {
+  fabOpen = false;
+  document.getElementById('fabMenu').classList.remove('open');
+  document.getElementById('fabBtn').classList.remove('open');
+  document.getElementById('fabOverlay').classList.remove('show');
+}
