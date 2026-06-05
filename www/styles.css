@@ -139,7 +139,7 @@ input, select, textarea { font-family: var(--font-body); }
 }
 .brand-text {
   font-family: var(--font-display);
-  font-size: 17px; font-weight: 700;
+  font-size: 19px; font-weight: 700;
   color: var(--white);
   line-height: 1.1;
   letter-spacing: -0.2px;
@@ -167,10 +167,10 @@ input, select, textarea { font-family: var(--font-body); }
 }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border-radius: var(--radius-sm);
   color: var(--sidebar-text);
-  font-weight: 500; font-size: 13.5px;
+  font-weight: 500; font-size: 15px;
   cursor: pointer;
   transition: all 0.18s var(--ease-smooth);
   margin-bottom: 1px;
@@ -178,7 +178,7 @@ input, select, textarea { font-family: var(--font-body); }
   width: 100%; text-align: left;
   position: relative;
 }
-.nav-item i { width: 18px; text-align: center; font-size: 15px; opacity: 0.85; }
+.nav-item i { width: 20px; text-align: center; font-size: 17px; opacity: 0.85; }
 .nav-item:hover {
   background: var(--sidebar-item-hover);
   color: var(--white);
@@ -230,12 +230,12 @@ input, select, textarea { font-family: var(--font-body); }
 }
 .header-title {
   flex: 1;
-  font-weight: 700; font-size: 16px;
+  font-weight: 700; font-size: 18px;
   color: var(--gray-900);
   line-height: 1.2;
 }
 .header-title small {
-  display: block; font-size: 11.5px;
+  display: block; font-size: 13px;
   font-weight: 400; color: var(--gray-400);
   margin-top: 1px;
 }
@@ -587,26 +587,33 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 
 .farmer-card-footer {
-  padding: 10px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--gray-50);
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 8px;
   background: var(--gray-50);
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .farmer-card-actions {
-  display: flex; gap: 4px; margin-left: auto;
+  display: flex; gap: 6px; margin-left: auto; flex-shrink: 0;
 }
 .btn-card-action {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--gray-200);
+  border: 1.5px solid var(--gray-200);
   background: var(--white);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px; cursor: pointer;
   color: var(--gray-500);
   transition: all 0.15s var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-card-action:hover { background: var(--gray-100); color: var(--gray-700); }
-.btn-card-action.danger:hover { background: var(--red-100); color: var(--red-500); border-color: var(--red-100); }
+.btn-card-action:hover,
+.btn-card-action:active { background: var(--gray-100); color: var(--gray-700); }
+.btn-card-action.danger { border-color: var(--red-100); background: var(--red-100); color: var(--red-500); }
+.btn-card-action.danger:hover,
+.btn-card-action.danger:active { background: var(--red-500); color: white; border-color: var(--red-500); }
 
 /* ---- Map ---- */
 #map {
