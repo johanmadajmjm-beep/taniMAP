@@ -684,6 +684,28 @@
 <!-- Toast Container -->
 <div id="toast-container"></div>
 
+<!-- ===== FAB (Floating Action Button) ===== -->
+<div class="fab-overlay" id="fabOverlay" onclick="closeFab()"></div>
+<div class="fab-container" id="fabContainer">
+  <div class="fab-menu" id="fabMenu">
+    <button class="fab-menu-item" onclick="closeFab();openAddVisitModal()">
+      <div class="fab-menu-icon" style="background:#1e74d4">
+        <i class="fas fa-clipboard-list"></i>
+      </div>
+      <span>Tambah Kunjungan</span>
+    </button>
+    <button class="fab-menu-item" onclick="closeFab();openAddFarmerModal()">
+      <div class="fab-menu-icon" style="background:#2e7d39">
+        <i class="fas fa-user-plus"></i>
+      </div>
+      <span>Tambah Petani</span>
+    </button>
+  </div>
+  <button class="fab-btn" id="fabBtn" onclick="toggleFab()">
+    <i class="fas fa-plus" id="fabIcon"></i>
+  </button>
+</div>
+
 <!-- ============ SCRIPTS ============ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
