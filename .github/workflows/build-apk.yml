@@ -32,32 +32,43 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Patch AndroidManifest — permissions & geolocation
+      - name: Patch AndroidManifest — permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
+
+          # Location permissions
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />|' "$MANIFEST"
+            echo "Location permissions added."
+          else
+            echo "Location permissions already present."
+          fi
 
           # Storage permissions
           if ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
             sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />|' "$MANIFEST"
             echo "Storage permissions added."
+          else
+            echo "Storage permissions already present."
           fi
 
-          # Geolocation permissions
-          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
-            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />|' "$MANIFEST"
-            echo "Location permissions added."
-          fi
-
-          # Enable geolocation di WebView — patch MainActivity
-          MAIN="android/app/src/main/java/com/johanmadajmjm/tanimap/MainActivity.java"
-          if [ -f "$MAIN" ] && ! grep -q "setGeolocationEnabled" "$MAIN"; then
-            sed -i 's/public class MainActivity extends BridgeActivity {/public class MainActivity extends BridgeActivity {\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        bridge.getWebView().getSettings().setGeolocationEnabled(true);\n        bridge.getWebView().getSettings().setGeolocationDatabasePath(getFilesDir().getAbsolutePath());\n    }/' "$MAIN"
-            # Tambah import Bundle
-            sed -i '1s/^/import android.os.Bundle;\n/' "$MAIN"
-            echo "WebView geolocation enabled."
-          fi
-
+          echo "Final manifest:"
           cat "$MANIFEST"
+
+      - name: Enable WebView geolocation via XML override
+        run: |
+          # Buat file network security config untuk allow geolocation
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/config.xml << 'XMLEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" id="com.johanmadajmjm.tanimap">
+    <access origin="*" />
+    <allow-navigation href="*" />
+    <allow-intent href="*" />
+    <preference name="Geolocation" value="true" />
+</widget>
+XMLEOF
+          echo "WebView config created."
 
       - name: Setup Java
         uses: actions/setup-java@v4
