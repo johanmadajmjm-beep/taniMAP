@@ -2492,7 +2492,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzBziuTk-5akjlHAGoWvdlTRrbIWpUDkldVn67Qke0hmm5vo0vcq0SPWEPcqCm1noE2/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx0_6qxAa3xYelqYVradei12ESPDJJl7e3CZBnxhcfLR8VXURmSBCI4jB-UPGwIP60/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
