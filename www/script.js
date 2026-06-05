@@ -645,6 +645,9 @@ function addLahanRow(data = {}) {
         <input type="number" class="form-control lahan-lng" value="${data.lng||''}" step="0.000001" />
       </div>
     </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="getGPSForLahan(this)" style="margin-bottom:8px">
+      <i class="fas fa-location-arrow"></i> Ambil Titik Lokasi Lahan
+    </button>
     <div class="form-group">
       <label class="form-label">Catatan</label>
       <input type="text" class="form-control lahan-catatan" value="${data.catatan||''}" placeholder="Keterangan tambahan (opsional)" />
@@ -1236,6 +1239,27 @@ function confirmDeleteFarmer(id) {
 }
 
 // ---- GPS ----
+
+/**
+ * Ambil GPS untuk field lahan — otomatis isi lat/lng di baris lahan yang diklik
+ */
+function getGPSForLahan(btn) {
+  if (!navigator.geolocation) { showToast('GPS tidak didukung', 'error'); return; }
+  showToast('Mengambil lokasi GPS...', 'info');
+  const row = btn.closest('.inline-form-row');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      row.querySelector('.lahan-lat').value = pos.coords.latitude.toFixed(6);
+      row.querySelector('.lahan-lng').value = pos.coords.longitude.toFixed(6);
+      showToast('GPS lahan berhasil diambil', 'success');
+    },
+    err => {
+      const msg = { 1: 'Izin lokasi ditolak', 2: 'GPS tidak aktif', 3: 'Timeout GPS' };
+      showToast(msg[err.code] || 'Gagal mengambil lokasi', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
 
 function getGPSForForm() {
   if (!navigator.geolocation) {
