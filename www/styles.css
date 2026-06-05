@@ -377,6 +377,17 @@ input, select, textarea { font-family: var(--font-body); }
 
 /* ---- Table ---- */
 .table-wrap { overflow-x: auto; }
+/* Di HP — cegah scroll horizontal, hanya scroll vertikal */
+@media (max-width: 900px) {
+  .table-wrap { overflow-x: hidden; }
+  table { table-layout: fixed; width: 100%; }
+  thead th, tbody td {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 12px;
+    padding: 8px 6px;
+  }
+}
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th {
   padding: 11px 14px;
