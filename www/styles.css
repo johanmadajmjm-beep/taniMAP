@@ -376,17 +376,33 @@ input, select, textarea { font-family: var(--font-body); }
 .chart-canvas-wrap { position: relative; height: 200px; }
 
 /* ---- Table ---- */
-.table-wrap { overflow-x: auto; }
-/* Di HP — cegah scroll horizontal, hanya scroll vertikal */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+/* Di HP — layout tabel responsif, scroll vertikal saja */
 @media (max-width: 900px) {
-  .table-wrap { overflow-x: hidden; }
-  table { table-layout: fixed; width: 100%; }
-  thead th, tbody td {
-    white-space: normal;
-    word-break: break-word;
-    font-size: 12px;
-    padding: 8px 6px;
+  .table-wrap {
+    overflow-x: hidden;
   }
+  table {
+    table-layout: fixed;
+    width: 100%;
+    word-break: break-word;
+  }
+  thead th {
+    font-size: 10px;
+    padding: 8px 5px;
+    white-space: normal;
+  }
+  tbody td {
+    font-size: 12px;
+    padding: 8px 5px;
+    white-space: normal;
+  }
+  /* Sembunyikan kolom kurang penting di HP */
+  .hide-mobile { display: none !important; }
 }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th {
@@ -1337,4 +1353,21 @@ body.font-large  { font-size: 16px; }
 body.dark .fab-menu-item span {
   background: #2a2f35;
   color: #f3f4f6;
+}
+
+/* ---- Modal Foto Viewer ---- */
+#modalFotoImg {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  background: var(--gray-100);
+  display: block;
+}
+#modalFotoViewer .modal {
+  max-width: 520px;
+}
+#modalFotoViewer .modal-body {
+  padding: 16px;
+  text-align: center;
 }
