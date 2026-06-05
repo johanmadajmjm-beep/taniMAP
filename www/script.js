@@ -18,7 +18,7 @@ let currentPage = 'dashboard';  // Halaman aktif
 //  IMGBB CONFIG
 //  Daftar gratis di https://api.imgbb.com → dapat API key
 // ============================================================
-const IMGBB_API_KEY = 'GANTI_DENGAN_IMGBB_API_KEY_KAMU';
+const IMGBB_API_KEY = '8e048d3f5b44c0da0c58f19e4fcc721b';
 
 /**
  * Upload satu foto (base64) ke ImgBB
@@ -2492,7 +2492,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx6b2IDCLXJ1sulCHrglhFiZOb1JSy3e7rpIrafb3Q15NOdPN7MA1fXfIN1O6vrA7Y3/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzBziuTk-5akjlHAGoWvdlTRrbIWpUDkldVn67Qke0hmm5vo0vcq0SPWEPcqCm1noE2/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
