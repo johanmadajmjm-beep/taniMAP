@@ -2428,7 +2428,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx0_6qxAa3xYelqYVradei12ESPDJJl7e3CZBnxhcfLR8VXURmSBCI4jB-UPGwIP60/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzAW47Jw9YlELywZujueVvIaAzuT0QymgXTinnIVHXvYgsOqJ697vXZjBDdJ0LbwCKh/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
@@ -2541,7 +2541,7 @@ async function doSendToSheets() {
   }
 
   try {
-    await sendViaForm(payload);
+    await kirimViaJSONP(payload);
     setSheetStatus('success',
       '<i class="fas fa-check-circle"></i> Semua data berhasil dikirim ke Google Sheets!'
     );
@@ -2550,7 +2550,7 @@ async function doSendToSheets() {
   } catch(err) {
     console.error('Sheets error:', err);
     setSheetStatus('error',
-      `<i class="fas fa-exclamation-circle"></i> Gagal: ${err.message}`
+      `<i class="fas fa-exclamation-circle"></i> Gagal: ${err.message}. Periksa koneksi internet.`
     );
     showToast('Gagal mengirim ke Google Sheets', 'error');
   } finally {
@@ -2559,56 +2559,31 @@ async function doSendToSheets() {
 }
 
 /**
- * Kirim data via hidden iframe + form POST
- * Tidak ada batasan ukuran, tidak diblokir CORS
+ * Kirim semua data sekaligus via fetch POST
+ * Apps Script v7 sudah dikonfigurasi untuk menerima POST dengan CORS headers
  */
-function sendViaForm(payload) {
-  return new Promise((resolve, reject) => {
-    // Buat iframe tersembunyi sebagai target form
-    const iframeName = 'tanimap_iframe_' + Date.now();
-    const iframe = document.createElement('iframe');
-    iframe.name = iframeName;
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-
-    // Buat form tersembunyi
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = SHEETS_WEBHOOK_URL;
-    form.target = iframeName;
-    form.style.display = 'none';
-
-    // Tambah data sebagai hidden input
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'data';
-    input.value = JSON.stringify(payload);
-    form.appendChild(input);
-
-    document.body.appendChild(form);
-
-    // Timeout 15 detik lalu resolve (anggap berhasil)
-    const timer = setTimeout(() => {
-      cleanup();
-      resolve('ok');
-    }, 15000);
-
-    iframe.onload = () => {
-      clearTimeout(timer);
-      cleanup();
-      resolve('ok');
-    };
-
-    function cleanup() {
-      setTimeout(() => {
-        form.parentNode && form.parentNode.removeChild(form);
-        iframe.parentNode && iframe.parentNode.removeChild(iframe);
-      }, 1000);
-    }
-
-    form.submit();
+async function kirimViaJSONP(payload) {
+  // Encode data ke base64 agar aman dikirim
+  const dataStr = JSON.stringify(payload);
+  
+  const response = await fetch(SHEETS_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: dataStr,
   });
+
+  if (!response.ok) {
+    throw new Error('Server error: ' + response.status);
+  }
+  
+  const result = await response.json();
+  if (result.status === 'error') {
+    throw new Error(result.message);
+  }
+  return result;
 }
+
+
 
 /**
  * Helper tampilkan status di modal
