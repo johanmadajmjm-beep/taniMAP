@@ -2238,7 +2238,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxG1oquXDHzrIq5QjYrQd55kAsieTJKHCgHErH5Gg7p34QnikgPinTLaNiA6p766WzH/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwZgGkB4WcBhlNoRD-9nvCo2hsVJrdDM7mTDvM0gtSZqZez6dyqVjw_ev3NBmsW34pG/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
@@ -2333,24 +2333,38 @@ async function doSendToSheets() {
   }
 
   try {
-    // Kirim via image src trick — satu-satunya cara bypass CORS
-    // dari GitHub Pages / Android WebView ke Google Apps Script
+    // Kirim via JSONP — cara yang benar-benar bypass CORS
+    // Apps Script mereturn callback(data) yang dieksekusi browser
     const dataStr = encodeURIComponent(JSON.stringify(payload));
-    const url = SHEETS_WEBHOOK_URL + '?data=' + dataStr;
+    const cbName  = 'tanimapCb_' + Date.now();
+    const url     = SHEETS_WEBHOOK_URL + '?callback=' + cbName + '&data=' + dataStr;
 
     await new Promise((resolve, reject) => {
-      const img = new Image();
-      const timer = setTimeout(() => resolve('timeout'), 15000);
-      img.onload  = () => { clearTimeout(timer); resolve('ok'); };
-      img.onerror = () => { clearTimeout(timer); resolve('ok'); };
-      // onerror juga resolve karena Apps Script tidak return image
-      // tapi request tetap diterima dan diproses
-      img.src = url;
+      const script = document.createElement('script');
+      const timer  = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timeout — periksa koneksi internet'));
+      }, 20000);
+
+      window[cbName] = (res) => {
+        clearTimeout(timer);
+        cleanup();
+        if (res && res.status === 'ok') resolve(res);
+        else reject(new Error(res?.message || 'Gagal'));
+      };
+
+      function cleanup() {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('Gagal terhubung ke server')); };
+      script.src = url;
+      document.head.appendChild(script);
     });
 
     setSheetStatus('success',
-      `<i class="fas fa-check-circle"></i> Data berhasil dikirim! ` +
-      `Cek Google Sheets dalam beberapa detik.`
+      `<i class="fas fa-check-circle"></i> Data berhasil dikirim ke Google Sheets!`
     );
     showToast('Data berhasil dikirim ke Google Sheets', 'success');
     localStorage.setItem('tanimap_lastSync', new Date().toISOString());
@@ -2358,8 +2372,7 @@ async function doSendToSheets() {
   } catch (err) {
     console.error('Sheets error:', err);
     setSheetStatus('error',
-      `<i class="fas fa-exclamation-circle"></i> Gagal mengirim: ${err.message}. ` +
-      `Periksa koneksi internet.`
+      `<i class="fas fa-exclamation-circle"></i> Gagal: ${err.message}. Periksa koneksi internet.`
     );
     showToast('Gagal mengirim ke Google Sheets', 'error');
   } finally {
