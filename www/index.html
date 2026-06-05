@@ -300,6 +300,50 @@
           <button class="btn btn-danger" onclick="exportPDF()">
             <i class="fas fa-file-pdf"></i> Export PDF
           </button>
+          <button class="btn btn-sheets" onclick="exportToGoogleSheets()">
+            <i class="fas fa-table"></i> Kirim ke Google Sheets
+          </button>
+        </div>
+
+        <!-- Modal konfirmasi Google Sheets -->
+        <div class="modal-overlay" id="modalSheets">
+          <div class="modal" style="max-width:440px">
+            <div class="modal-header">
+              <div class="modal-title">Kirim ke Google Sheets</div>
+              <button class="modal-close" onclick="closeModal('modalSheets')">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div id="sheetsStatus" style="display:none"></div>
+              <div class="form-group">
+                <label class="form-label">Nama Pengirim <span class="required">*</span></label>
+                <input type="text" class="form-control" id="sheetsPengirim" placeholder="contoh: Johan Mada" />
+                <small style="color:var(--gray-400);font-size:11px;margin-top:4px;display:block">Nama ini akan dicatat sebagai pengirim data di Google Sheets</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Kirim Data</label>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                    <input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers_count} petani)
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                    <input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                    <input type="checkbox" id="chkProduksi" checked /> Data Produksi
+                  </label>
+                </div>
+              </div>
+              <div style="background:var(--green-50);border:1px solid var(--green-200);border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--green-700)">
+                <i class="fas fa-info-circle"></i> Data akan dikirim ke Google Sheets milik admin dan digabung dengan data dari pengguna lain.
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeModal('modalSheets')">Batal</button>
+              <button class="btn btn-sheets" id="btnKirimSheets" onclick="doSendToSheets()">
+                <i class="fas fa-paper-plane"></i> Kirim Sekarang
+              </button>
+            </div>
+          </div>
         </div>
         <div id="reportContent"></div>
       </div>
