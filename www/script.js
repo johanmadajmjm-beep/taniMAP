@@ -154,7 +154,6 @@ function closeSidebar() {
 function renderDashboard() {
   renderStats();
   renderCharts();
-  renderRecentFarmers();
 }
 
 function renderStats() {
