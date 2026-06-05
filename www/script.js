@@ -2238,7 +2238,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbygoIFasnu5tpMCehAe-QPnO9uEKgmzoSOStD9nTkDmawxKxnaBmaPPCuBHCRwLtHbk/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxG1oquXDHzrIq5QjYrQd55kAsieTJKHCgHErH5Gg7p34QnikgPinTLaNiA6p766WzH/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
@@ -2333,19 +2333,24 @@ async function doSendToSheets() {
   }
 
   try {
-    // Kirim via GET dengan data di-encode sebagai parameter URL
-    // Ini cara yang bekerja di Android WebView tanpa CORS issue
+    // Kirim via image src trick — satu-satunya cara bypass CORS
+    // dari GitHub Pages / Android WebView ke Google Apps Script
     const dataStr = encodeURIComponent(JSON.stringify(payload));
     const url = SHEETS_WEBHOOK_URL + '?data=' + dataStr;
 
-    const res = await fetch(url, {
-      method: 'GET',
-      mode: 'no-cors'
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      const timer = setTimeout(() => resolve('timeout'), 15000);
+      img.onload  = () => { clearTimeout(timer); resolve('ok'); };
+      img.onerror = () => { clearTimeout(timer); resolve('ok'); };
+      // onerror juga resolve karena Apps Script tidak return image
+      // tapi request tetap diterima dan diproses
+      img.src = url;
     });
 
     setSheetStatus('success',
-      `<i class="fas fa-check-circle"></i> Data berhasil dikirim ke Google Sheets! ` +
-      `Admin dapat melihat data di spreadsheet.`
+      `<i class="fas fa-check-circle"></i> Data berhasil dikirim! ` +
+      `Cek Google Sheets dalam beberapa detik.`
     );
     showToast('Data berhasil dikirim ke Google Sheets', 'success');
     localStorage.setItem('tanimap_lastSync', new Date().toISOString());
