@@ -93,151 +93,39 @@
 
       <!-- ========== DASHBOARD ========== -->
       <div class="page active" id="page-dashboard">
-
-        <section class="dashboard-hero">
-          <div>
-            <div class="hero-badge">🌾 TaniMap</div>
-            <h1>Dashboard Monitoring Petani 🌾</h1>
-            <p>Pantau data petani, lahan, tanaman, produksi, dan sebaran lokasi dalam satu sistem terintegrasi.</p>
-
-            <div class="hero-stats">
-              <div class="hero-stat">
-                <span class="hero-stat-value">📍</span>
-                <span class="hero-stat-label">Pemetaan GPS</span>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-value">🌱</span>
-                <span class="hero-stat-label">Monitoring Tanaman</span>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-value">📊</span>
-                <span class="hero-stat-label">Analisis Produksi</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="hero-actions">
-            <button class="btn btn-light" onclick="openAddFarmerModal()">
-              <i class="fas fa-plus"></i> Tambah Petani
-            </button>
-            <button class="btn btn-ghost-light" onclick="navigate('map')">
-              <i class="fas fa-map"></i> Lihat Peta
-            </button>
-          </div>
-        </section>
-
-        <div class="dashboard-section-title">
-          <div>
-            <h2>Ringkasan Data</h2>
-            <p>Rekap cepat kondisi data pertanian saat ini</p>
-          </div>
-        </div>
-
         <div class="stats-grid" id="statsGrid"></div>
-        <div class="card" style="margin-bottom:20px">
-  <div class="card-header">
-    <div class="card-title">📈 Insight Hari Ini</div>
-  </div>
-
-  <div class="card-body">
-    <div class="info-grid">
-
-      <div class="info-item">
-        <div class="info-key">Total Petani</div>
-        <div class="info-value" id="insightTotalPetani">-</div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-key">Desa Terbanyak</div>
-        <div class="info-value" id="insightTopVillage">-</div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-key">Komoditas Dominan</div>
-        <div class="info-value" id="insightTopCommodity">-</div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-key">Total Produksi</div>
-        <div class="info-value" id="insightTotalProduction">-</div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-        <div class="dashboard-main-grid">
-
-          <div class="chart-card chart-wide">
+        <div class="charts-grid">
+          <div class="chart-card">
             <div class="chart-title">📍 Petani per Desa</div>
             <div class="chart-canvas-wrap"><canvas id="chartVillage"></canvas></div>
           </div>
-
-          <div class="card dashboard-map-card">
-            <div class="card-header">
-              <div class="card-title">🗺️ Peta Sebaran Petani</div>
-              <button class="btn btn-outline btn-sm" onclick="navigate('map')">Buka Peta</button>
-            </div>
-            <div class="card-body">
-              <div id="dashboardMiniMap" class="dashboard-mini-map"></div>
-            </div>
-          </div>
-
-          <div class="card recent-card">
-            <div class="card-header">
-              <div class="card-title">👨‍🌾 Petani Terbaru</div>
-              <button class="btn btn-outline btn-sm" onclick="navigate('farmers')">Lihat Semua</button>
-            </div>
-            <div class="card-body">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Petani</th>
-                      <th>Desa</th>
-                      <th>Komoditas</th>
-                      <th>Lahan</th>
-                      <th>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody id="recentFarmersTable"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">⚡ Akses Cepat</div>
-            </div>
-            <div class="card-body">
-              <div style="display:grid;gap:12px">
-                <button class="btn btn-primary w-full" style="justify-content:center" onclick="openAddFarmerModal()">
-                  <i class="fas fa-user-plus"></i> Input Petani Baru
-                </button>
-                <button class="btn btn-secondary w-full" style="justify-content:center" onclick="navigate('visits')">
-                  <i class="fas fa-clipboard-list"></i> Catat Kunjungan
-                </button>
-                <button class="btn btn-secondary w-full" style="justify-content:center" onclick="navigate('production')">
-                  <i class="fas fa-box-open"></i> Lihat Produksi
-                </button>
-                <button class="btn btn-outline w-full" style="justify-content:center" onclick="navigate('reports')">
-                  <i class="fas fa-file-alt"></i> Buka Laporan
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div class="chart-card">
             <div class="chart-title">🌾 Sebaran Komoditas</div>
             <div class="chart-canvas-wrap"><canvas id="chartCommodity"></canvas></div>
           </div>
-
           <div class="chart-card">
-            <div class="chart-title">📦 Produksi per Komoditas</div>
+            <div class="chart-title">📦 Produksi per Komoditas (Kg/Ton)</div>
             <div class="chart-canvas-wrap"><canvas id="chartProduction"></canvas></div>
           </div>
-
+        </div>
+        <!-- Recent farmers -->
+        <div class="card mt-2">
+          <div class="card-header">
+            <div class="card-title">Petani Terbaru</div>
+            <button class="btn btn-outline btn-sm" onclick="navigate('farmers')">Lihat Semua</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Petani</th><th>Desa</th><th>Komoditas</th><th>Lahan</th><th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="recentFarmersTable"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
