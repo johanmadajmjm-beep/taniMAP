@@ -2564,12 +2564,9 @@ function exportToGoogleSheets() {
     const infoFoto = document.getElementById('sheetsInfoFoto');
     if (infoFoto) {
       if (!navigator.onLine) {
-        infoFoto.innerHTML = '<div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px;font-size:12px;color:#c0392b;margin-top:8px"><i class="fas fa-wifi-slash"></i> <b>Tidak ada koneksi.</b> Data teks tetap tersimpan lokal dan bisa dikirim saat ada sinyal. Foto akan di-upload otomatis saat kirim.</div>';
-        infoFoto.innerHTML = `<div style="background:#e3effe;border:1px solid #93c5fd;border-radius:8px;padding:10px;font-size:12px;color:#1e40af;margin-top:8px"><i class="fas fa-cloud-upload-alt"></i> <b>${fotoBelumUpload} foto</b> akan di-upload ke cloud saat kamu klik Kirim. Link foto akan otomatis muncul di Google Sheets.</div>`;
-      } else if (fotoBelumUpload > 0) {
-        infoFoto.innerHTML = `<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:8px"><i class="fas fa-exclamation-triangle"></i> Ada <b>${fotoBelumUpload} foto</b> tersimpan lokal. Tambahkan ImgBB API key agar foto bisa di-upload ke cloud.</div>`;
+        infoFoto.innerHTML = '<div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px;font-size:12px;color:#c0392b;margin-top:8px"><i class="fas fa-wifi-slash"></i> <b>Tidak ada koneksi.</b> Data teks tetap tersimpan lokal dan bisa dikirim saat ada sinyal.</div>';
       } else {
-        infoFoto.innerHTML = '<div style="background:#e2f4e4;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:12px;color:#166534;margin-top:8px"><i class="fas fa-check-circle"></i> Semua foto sudah tersimpan di cloud. Link foto akan tampil di Google Sheets.</div>';
+        infoFoto.innerHTML = '<div style="background:#e2f4e4;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:12px;color:#166534;margin-top:8px"><i class="fas fa-check-circle"></i> Kirim data ke Google Sheets. Foto dikirim terpisah via Galeri Foto.</div>';
       }
     }
   }
@@ -3024,7 +3021,7 @@ function handleBackButton() {
 // ============================================================
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFV8qVmUpoYXZKJ8WPvJyojggePHtBwW0F2bP9XiwdyaKz-Km5QO2ez6vESpju1WfKDA/exec';
-const DRIVE_SENT_KEY  = 'tanimap_drive_sent'; // key localStorage untuk foto yang sudah terkirim
+const DRIVE_SENT_KEY  = 'tanimap_drive_sent';
 
 /**
  * Kumpulkan semua foto dari farmers
@@ -3058,7 +3055,7 @@ function collectAllPhotos() {
     if (filter === 'all' || filter === 'tanaman') {
       (f.tanaman || []).forEach(t => {
         if (t.foto && t.foto.startsWith('data:image')) {
-          const filename = `${nama}_${t.nama || 'Tanaman'}.jpg`;
+          const filename = `${nama}_${t.jenis || 'Tanaman'}.jpg`;
           photos.push({ id: `tanaman_${f.id}_${t.id}`, filename, base64: t.foto, type: 'tanaman', farmerName: nama, sentToDrive: !!sent[filename] });
         }
       });
