@@ -150,6 +150,37 @@ function refreshAll() {
  * Navigasi ke halaman tertentu
  * @param {string} page - ID halaman
  */
+
+// ============================================================
+//  BOTTOM NAV — MORE MENU
+// ============================================================
+
+function toggleMoreMenu() {
+  const sheet  = document.getElementById('moreMenuSheet');
+  const overlay = document.getElementById('moreMenuOverlay');
+  const icon   = document.getElementById('moreNavIcon');
+  const isOpen = sheet.style.display === 'block';
+
+  if (isOpen) {
+    closeMoreMenu();
+  } else {
+    sheet.style.display  = 'block';
+    overlay.style.display = 'block';
+    if (icon) { icon.className = 'fas fa-times'; }
+    document.getElementById('btnMoreNav').style.transform = 'rotate(45deg)';
+  }
+}
+
+function closeMoreMenu() {
+  const sheet   = document.getElementById('moreMenuSheet');
+  const overlay = document.getElementById('moreMenuOverlay');
+  const icon    = document.getElementById('moreNavIcon');
+  sheet.style.display   = 'none';
+  overlay.style.display = 'none';
+  if (icon) { icon.className = 'fas fa-grip'; }
+  document.getElementById('btnMoreNav').style.transform = 'rotate(0deg)';
+}
+
 function navigate(page) {
   currentPage = page;
 
@@ -168,9 +199,19 @@ function navigate(page) {
   });
 
   // Sync bottom nav
+  // Tutup more menu dulu
+  closeMoreMenu();
+  // Reset semua tab
   document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
+  // Highlight tab utama yang sesuai
+  const mainPages = ['dashboard','farmers','reports','settings'];
   const bnavBtn = document.getElementById('bnav-' + page);
-  if (bnavBtn) bnavBtn.classList.add('active');
+  if (bnavBtn) {
+    bnavBtn.classList.add('active');
+  } else if (!mainPages.includes(page)) {
+    // Halaman dari "more menu" — tidak ada tab utama yang di-highlight
+    // Biarkan semua tidak aktif (tombol tengah sudah jelas konteksnya)
+  }
 
   // Update header
   const titles = {
