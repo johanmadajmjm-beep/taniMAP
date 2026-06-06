@@ -162,6 +162,11 @@ function navigate(page) {
     }
   });
 
+  // Sync bottom nav
+  document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
+  const bnavBtn = document.getElementById('bnav-' + page);
+  if (bnavBtn) bnavBtn.classList.add('active');
+
   // Update header
   const titles = {
     dashboard: ['Beranda', 'Ringkasan data pertanian'],
