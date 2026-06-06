@@ -2059,55 +2059,47 @@ function exportExcel() {
   const wb = XLSXlib.utils.book_new();
   const tgl = new Date().toLocaleDateString('id-ID');
 
-  // ---- Helper: buat cell hyperlink untuk SheetJS ----
-  function xlsxLink(url, label) {
-    if (!url || !url.startsWith('http')) return url || '-';
-    return { t: 's', v: label || 'Lihat Foto', l: { Target: url } };
-  }
-
   // ---- Sheet 1: Data Petani ----
   const petaniData = [
     ['ID','Nama','HP','Jenis Kelamin','Umur','Desa','Kecamatan','Kabupaten',
      'Alamat','Kelompok Tani','Komoditas','Total Lahan (Ha)','Latitude','Longitude',
-     'Tgl Input','Foto Petani']
+     'Tgl Input']
   ];
   farmers.forEach(f => {
     petaniData.push([
-      f.id, f.nama, f.hp, f.jenisKelamin, f.umur,
-      f.desa, f.kecamatan, f.kabupaten, f.alamat, f.kelompokTani, f.komoditas,
+      f.id, f.nama, f.hp||'', f.jenisKelamin||'', f.umur||'',
+      f.desa||'', f.kecamatan||'', f.kabupaten||'', f.alamat||'',
+      f.kelompokTani||'', f.komoditas||'',
       (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2),
-      f.lat, f.lng, f.tanggalInput,
-      xlsxLink(f.foto, 'Foto Petani')
+      f.lat||'', f.lng||'', f.tanggalInput||''
     ]);
   });
   const wsPetani = XLSXlib.utils.aoa_to_sheet(petaniData);
-  wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12,18].map(w=>({wch:w}));
+  wsPetani['!cols'] = [6,20,14,12,6,14,14,12,24,18,14,10,10,10,12].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsPetani, 'Data Petani');
 
   // ---- Sheet 2: Data Lahan (dengan foto) ----
-  const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan','Foto Lahan']];
+  const lahanData = [['ID Lahan','Nama Petani','Nama Lahan','Luas (Ha)','Status','Jenis','Latitude','Longitude','Catatan']];
   farmers.forEach(f => (f.lahan||[]).forEach(l => {
     lahanData.push([
-      l.id, f.nama, l.nama, l.luas, l.status, l.jenis,
-      l.lat, l.lng, l.catatan,
-      xlsxLink(l.foto, 'Foto Lahan')
+      l.id, f.nama, l.nama||'', l.luas||0, l.status||'', l.jenis||'',
+      l.lat||'', l.lng||'', l.catatan||''
     ]);
   }));
   const wsLahan = XLSXlib.utils.aoa_to_sheet(lahanData);
-  wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24,18].map(w=>({wch:w}));
+  wsLahan['!cols'] = [10,20,18,8,14,12,10,10,24].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsLahan, 'Data Lahan');
 
   // ---- Sheet 3: Data Tanaman (dengan foto) ----
-  const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan','Foto Tanaman']];
+  const tanamanData = [['ID','Nama Petani','Desa','Jenis Tanaman','Luas Tanam (Ha)','Umur (Bln)','Status','Perkiraan Panen','Catatan']];
   farmers.forEach(f => (f.tanaman||[]).forEach(t => {
     tanamanData.push([
-      t.id, f.nama, f.desa, t.jenis, t.luasTanam, t.umurTanaman,
-      t.status, t.perkiraanPanen, t.catatan,
-      xlsxLink(t.foto, 'Foto Tanaman')
+      t.id, f.nama, f.desa||'', t.jenis||'', t.luasTanam||0, t.umurTanaman||0,
+      t.status||'', t.perkiraanPanen||'', t.catatan||''
     ]);
   }));
   const wsTanaman = XLSXlib.utils.aoa_to_sheet(tanamanData);
-  wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24,18].map(w=>({wch:w}));
+  wsTanaman['!cols'] = [10,20,14,16,12,10,14,14,24].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsTanaman, 'Data Tanaman');
 
   // ---- Sheet 4: Kunjungan ----
