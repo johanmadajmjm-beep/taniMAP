@@ -17,6 +17,34 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+
+<style>
+#splashScreen{position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(160deg,#022c22 0%,#064e3b 40%,#0f172a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 28px;font-family:'Plus Jakarta Sans',sans-serif;overflow-y:auto;}
+#splashScreen.hide{animation:splashFadeOut .5s ease forwards;}
+@keyframes splashFadeOut{to{opacity:0;pointer-events:none;}}
+.splash-logo{font-family:'Sora',sans-serif;font-size:52px;font-weight:800;
+  color:white;letter-spacing:-2px;margin-bottom:4px;line-height:1;}
+.splash-logo span{color:#34d399;}
+.splash-tagline{font-size:13px;color:rgba(255,255,255,.5);font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:36px;}
+.splash-divider{width:48px;height:3px;background:linear-gradient(90deg,#34d399,#059669);
+  border-radius:2px;margin-bottom:32px;}
+.splash-feature{display:flex;align-items:flex-start;gap:14px;
+  margin-bottom:18px;width:100%;max-width:340px;}
+.splash-feature-icon{width:40px;height:40px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.splash-feature-text h4{font-size:14px;font-weight:700;color:white;margin-bottom:3px;}
+.splash-feature-text p{font-size:12px;color:rgba(255,255,255,.45);line-height:1.5;}
+.splash-version{font-size:11px;color:rgba(255,255,255,.25);margin-top:24px;margin-bottom:16px;}
+.splash-btn{width:100%;max-width:340px;padding:16px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#059669,#34d399);color:white;font-size:15px;
+  font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;
+  box-shadow:0 8px 24px rgba(5,150,105,.4);transition:all .2s;letter-spacing:.02em;}
+.splash-btn:active{transform:scale(.97);}
+</style>
 </head>
 <body>
 
@@ -1066,6 +1094,62 @@
       </button>
     </div>
   </div>
+</div>
+
+
+<!-- SPLASH SCREEN -->
+<div id="splashScreen">
+
+  <div class="splash-logo">Tani<span>Map</span></div>
+  <div class="splash-tagline">Sistem Informasi Manajemen Petani</div>
+  <div class="splash-divider"></div>
+
+  <div class="splash-feature">
+    <div class="splash-feature-icon" style="background:rgba(5,150,105,.2)">
+      <i class="fas fa-users" style="color:#34d399"></i>
+    </div>
+    <div class="splash-feature-text">
+      <h4>Kelola Data Petani</h4>
+      <p>Catat data petani, lahan, tanaman, dan produksi secara lengkap dan terstruktur</p>
+    </div>
+  </div>
+
+  <div class="splash-feature">
+    <div class="splash-feature-icon" style="background:rgba(37,99,235,.2)">
+      <i class="fas fa-map-marker-alt" style="color:#60a5fa"></i>
+    </div>
+    <div class="splash-feature-text">
+      <h4>Peta Interaktif</h4>
+      <p>Visualisasi sebaran lokasi petani dengan marker berwarna per komoditas</p>
+    </div>
+  </div>
+
+  <div class="splash-feature">
+    <div class="splash-feature-icon" style="background:rgba(217,119,6,.2)">
+      <i class="fas fa-file-alt" style="color:#fbbf24"></i>
+    </div>
+    <div class="splash-feature-text">
+      <h4>Laporan & Export</h4>
+      <p>Export data ke Excel, PDF, dan sinkronisasi langsung ke Google Sheets</p>
+    </div>
+  </div>
+
+  <div class="splash-feature">
+    <div class="splash-feature-icon" style="background:rgba(124,58,237,.2)">
+      <i class="fas fa-images" style="color:#a78bfa"></i>
+    </div>
+    <div class="splash-feature-text">
+      <h4>Galeri Foto Lapangan</h4>
+      <p>Dokumentasi foto petani, lahan, dan tanaman langsung dari kamera HP</p>
+    </div>
+  </div>
+
+  <div class="splash-version">TaniMap v1.0 &nbsp;·&nbsp; Nusa Tenggara Timur &nbsp;·&nbsp; 2026</div>
+
+  <button class="splash-btn" onclick="mulaiApp()">
+    <i class="fas fa-arrow-right"></i> &nbsp; Mulai
+  </button>
+
 </div>
 
 </body>
