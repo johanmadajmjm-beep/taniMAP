@@ -3265,6 +3265,13 @@ function initBackButton() {
 }
 
 function handleBackButton() {
+  // 0. Tutup more menu jika terbuka — prioritas pertama
+  const moreSheet = document.getElementById('moreMenuSheet');
+  if (moreSheet && moreSheet.style.display === 'block') {
+    closeMoreMenu();
+    return;
+  }
+
   // 1. Tutup modal yang terbuka
   const openModals = document.querySelectorAll('.modal-overlay.open');
   if (openModals.length > 0) {
