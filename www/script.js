@@ -1460,7 +1460,7 @@ function openDetail(id) {
       <button class="tab-btn" onclick="switchTab(this,'tab-tanaman')">🌱 Tanaman (${(f.tanaman||[]).length})</button>
       <button class="tab-btn" onclick="switchTab(this,'tab-kunjungan')">📋 Kunjungan (${(f.kunjungan||[]).length})</button>
       <button class="tab-btn" onclick="switchTab(this,'tab-produksi')">📦 Produksi (${(f.produksi||[]).length})</button>
-      <button class="tab-btn" onclick="switchTab(this,'tab-hama')">🐛 Hama (${(f.hama||[]).length})</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-hama')">🐛 Hama (${(f.hama||[]).length + (f.kunjungan||[]).reduce((s,k)=>s+(k.hama||[]).length,0)})</button>
     </div>
 
     <!-- Tab: Info Dasar -->
@@ -1602,19 +1602,24 @@ function openDetail(id) {
         <div class="section-title" style="flex:1">Hama & Penyakit</div>
         <button class="btn btn-primary btn-sm" onclick="openAddHamaModal('${f.id}')"><i class="fas fa-plus"></i> Tambah</button>
       </div>
-      ${(f.hama||[]).length ? (f.hama||[]).map(h => `
-        <div class="pest-item">
-          <div class="item-header">
-            <div class="item-title">🐛 ${h.nama}</div>
-            <div class="flex gap-1">
-              ${pestLevelBadge(h.tingkat)}
-              <button class="btn-icon" onclick="deleteHama('${f.id}','${h.id}')"><i class="fas fa-trash" style="color:var(--red-500);font-size:12px"></i></button>
+      ${(() => {
+        // Gabungkan hama lama (f.hama) dan hama baru (dari kunjungan)
+        const allH = [...(f.hama||[]).map(h=>({...h,sumber:'manual'}))];
+        (f.kunjungan||[]).forEach(k => (k.hama||[]).forEach(h => allH.push({...h,sumber:'kunjungan',tanggal:k.tanggal,petugas:k.petugas})));
+        return allH.length ? allH.map(h => `
+          <div class="pest-item">
+            <div class="item-header">
+              <div class="item-title">🐛 ${h.nama}</div>
+              <div class="flex gap-1">
+                ${pestLevelBadge(h.tingkat)}
+                ${h.sumber === 'manual' ? `<button class="btn-icon" onclick="deleteHama('${f.id}','${h.id}')"><i class="fas fa-trash" style="color:var(--red-500);font-size:12px"></i></button>` : ''}
+              </div>
             </div>
+            <div class="item-meta">🌿 ${h.tanaman} | Status: <strong>${h.status}</strong>${h.sumber==='kunjungan' ? ` | 📅 ${h.tanggal||''} (${h.petugas||''})` : ''}</div>
+            ${h.solusi ? `<div class="item-meta">💊 ${h.solusi}</div>` : ''}
           </div>
-          <div class="item-meta">🌿 ${h.tanaman} | Status: <strong>${h.status}</strong></div>
-          ${h.solusi ? `<div class="item-meta">💊 ${h.solusi}</div>` : ''}
-        </div>
-      `).join('') : '<div class="empty-state"><div class="empty-icon">🐛</div><p>Tidak ada hama/penyakit.</p></div>'}
+        `).join('') : '<div class="empty-state"><div class="empty-icon">🐛</div><p>Tidak ada hama/penyakit.</p></div>';
+      })()}
     </div>
   `;
 
