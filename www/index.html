@@ -212,7 +212,7 @@
             <!-- Legenda komoditas -->
             <div class="map-panel-card">
               <div class="map-panel-title"><i class="fas fa-circle-dot"></i> Legenda Komoditas</div>
-              <div class="map-legend-list">
+              <div class="map-legend-list" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 4px">
                 <div class="legend-item"><div class="legend-dot" style="background:#1b5e20"></div> Kopi Arabika</div>
                 <div class="legend-item"><div class="legend-dot" style="background:#2e7d32"></div> Kopi Robusta</div>
                 <div class="legend-item"><div class="legend-dot" style="background:#f57f17"></div> Jagung</div>
@@ -225,13 +225,7 @@
               </div>
             </div>
 
-            <!-- Statistik peta -->
-            <div class="map-panel-card">
-              <div class="map-panel-title"><i class="fas fa-chart-bar"></i> Statistik</div>
-              <div id="mapStats" class="map-stats-list"></div>
-            </div>
-
-            <!-- Petani terdekat / terbaru -->
+            <!-- Petani di peta -->
             <div class="map-panel-card">
               <div class="map-panel-title"><i class="fas fa-users"></i> Petani di Peta</div>
               <div id="mapFarmerList" class="map-farmer-list"></div>
@@ -449,7 +443,7 @@
 
         <!-- SECTION: Data -->
         <div class="settings-section-label" style="margin-top:24px"><i class="fas fa-database"></i> Data</div>
-        <div class="settings-grid settings-grid-2col">
+        <div class="settings-grid" style="grid-template-columns:1fr 1fr">
 
           <div class="settings-card">
             <div class="settings-card-header">
