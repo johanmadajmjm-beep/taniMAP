@@ -3243,16 +3243,17 @@ function collectAllPhotos() {
 /**
  * Render grid galeri foto
  */
+// Cache foto untuk akses cepat tanpa collectAllPhotos ulang
+let _galleryCache = [];
+
 function renderGallery() {
   const grid = document.getElementById('galleryGrid');
   if (!grid) return;
 
-  // Reset seleksi saat filter berubah agar tidak ada ghost selection
   gallerySelected.clear();
+  _galleryCache = collectAllPhotos();
 
-  const photos = collectAllPhotos();
-
-  if (photos.length === 0) {
+  if (_galleryCache.length === 0) {
     grid.innerHTML = `<div style="color:var(--gray-400);font-size:13px;grid-column:1/-1;text-align:center;padding:40px 0">
       <i class="fas fa-images" style="font-size:32px;margin-bottom:8px;display:block"></i>
       Belum ada foto tersimpan
@@ -3260,32 +3261,85 @@ function renderGallery() {
     return;
   }
 
+  grid.innerHTML = '';
+
   const badgeColor = { petani: 'var(--green-600)', lahan: 'var(--blue-500)', tanaman: '#f59e0b' };
   const badgeLabel = { petani: 'Petani', lahan: 'Lahan', tanaman: 'Tanaman' };
 
-  grid.innerHTML = photos.map(p => `
-    <div class="gallery-card" id="gcard_${p.id}"
-      style="position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--gray-100);border:2.5px solid transparent;transition:border-color .2s;cursor:pointer;user-select:none"
-      onclick="galleryHandleClick('${p.id}')"
-      ontouchstart="galleryTouchStart('${p.id}', event)"
-      ontouchend="galleryTouchEnd('${p.id}', event)"
-      ontouchmove="galleryTouchMove(event)"
-      onmousedown="galleryMouseDown('${p.id}')"
-      onmouseup="galleryMouseUp('${p.id}')"
-      onmouseleave="galleryMouseLeave('${p.id}')">
-      <img src="${p.base64}" style="width:100%;height:130px;object-fit:cover;display:block;pointer-events:none" loading="lazy" />
-      <div style="padding:6px 8px 4px;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
-        <span style="font-size:11px;font-weight:600;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${p.farmerName}</span>
-        ${p.sentToDrive ? `<span style="color:#34a853;font-size:13px;flex-shrink:0"><i class="fas fa-cloud-upload-alt"></i></span>` : `<span style="color:var(--gray-300);font-size:13px;flex-shrink:0"><i class="fas fa-cloud"></i></span>`}
-      </div>
-      <div style="padding:0 8px 6px;pointer-events:none">
-        <span style="font-size:10px;font-weight:700;color:${badgeColor[p.type]};text-transform:uppercase">${badgeLabel[p.type]}</span>
-      </div>
-      <div id="gcheck_${p.id}" style="display:none;position:absolute;top:6px;right:6px;width:22px;height:22px;background:var(--green-600);border-radius:50%;align-items:center;justify-content:center;pointer-events:none">
-        <i class="fas fa-check" style="color:white;font-size:11px"></i>
-      </div>
-    </div>
-  `).join('');
+  // Render bertahap 6 foto per frame agar tidak freeze UI
+  const CHUNK = 6;
+  let idx = 0;
+
+  function renderChunk() {
+    const end = Math.min(idx + CHUNK, _galleryCache.length);
+    const fragment = document.createDocumentFragment();
+
+    for (let i = idx; i < end; i++) {
+      const p = _galleryCache[i];
+      const div = document.createElement('div');
+      div.id = 'gcard_' + p.id;
+      div.className = 'gallery-card';
+      div.style.cssText = 'position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--gray-100);border:2.5px solid transparent;transition:border-color .2s;cursor:pointer;user-select:none';
+
+      // Gunakan lazy img — set src hanya saat sudah di DOM via IntersectionObserver
+      div.innerHTML = `
+        <img data-src="${p.base64}" src="" style="width:100%;height:130px;object-fit:cover;display:block;pointer-events:none;background:var(--gray-200)" loading="lazy" />
+        <div style="padding:6px 8px 4px;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
+          <span style="font-size:11px;font-weight:600;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${p.farmerName}</span>
+          ${p.sentToDrive ? '<span style="color:#34a853;font-size:13px;flex-shrink:0"><i class="fas fa-cloud-upload-alt"></i></span>' : '<span style="color:var(--gray-300);font-size:13px;flex-shrink:0"><i class="fas fa-cloud"></i></span>'}
+        </div>
+        <div style="padding:0 8px 6px;pointer-events:none">
+          <span style="font-size:10px;font-weight:700;color:${badgeColor[p.type]};text-transform:uppercase">${badgeLabel[p.type]}</span>
+        </div>
+        <div id="gcheck_${p.id}" style="display:none;position:absolute;top:6px;right:6px;width:22px;height:22px;background:var(--green-600);border-radius:50%;align-items:center;justify-content:center;pointer-events:none">
+          <i class="fas fa-check" style="color:white;font-size:11px"></i>
+        </div>`;
+
+      div.onclick      = () => galleryHandleClick(p.id);
+      div.ontouchstart = (e) => galleryTouchStart(p.id, e);
+      div.ontouchend   = (e) => galleryTouchEnd(p.id, e);
+      div.ontouchmove  = (e) => galleryTouchMove(e);
+      div.onmousedown  = () => galleryMouseDown(p.id);
+      div.onmouseup    = () => galleryMouseUp(p.id);
+      div.onmouseleave = () => galleryMouseLeave(p.id);
+
+      fragment.appendChild(div);
+    }
+
+    grid.appendChild(fragment);
+    idx = end;
+
+    // Lazy load gambar yang sudah masuk viewport
+    _galleryLazyLoad();
+
+    if (idx < _galleryCache.length) {
+      requestAnimationFrame(renderChunk);
+    }
+  }
+
+  requestAnimationFrame(renderChunk);
+}
+
+// IntersectionObserver untuk lazy load base64 gambar galeri
+let _galleryObserver = null;
+function _galleryLazyLoad() {
+  const imgs = document.querySelectorAll('#galleryGrid img[data-src]');
+  if (!imgs.length) return;
+
+  if (!_galleryObserver) {
+    _galleryObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+          _galleryObserver.unobserve(img);
+        }
+      });
+    }, { rootMargin: '100px' });
+  }
+
+  imgs.forEach(img => _galleryObserver.observe(img));
 }
 
 let gallerySelected = new Set();
@@ -3363,7 +3417,8 @@ function galleryHandleClick(id) {
 }
 
 function bukaGaleriPreview(photoId) {
-  const photos = collectAllPhotos();
+  // Gunakan cache agar tidak parse ulang semua foto
+  const photos = _galleryCache.length ? _galleryCache : collectAllPhotos();
   const p = photos.find(x => x.id === photoId);
   if (!p) return;
 
@@ -3405,7 +3460,7 @@ function galleryToggleSelect(id) {
 }
 
 function gallerySelectAll() {
-  const photos = collectAllPhotos();
+  const photos = _galleryCache.length ? _galleryCache : collectAllPhotos();
   photos.forEach(p => {
     gallerySelected.add(p.id);
     const card  = document.getElementById('gcard_' + p.id);
@@ -3416,7 +3471,7 @@ function gallerySelectAll() {
 }
 
 function galleryDeselectAll() {
-  const photos = collectAllPhotos();
+  const photos = _galleryCache.length ? _galleryCache : collectAllPhotos();
   photos.forEach(p => {
     gallerySelected.delete(p.id);
     const card  = document.getElementById('gcard_' + p.id);
@@ -3436,7 +3491,7 @@ async function gallerySendSelected() {
     return;
   }
 
-  const photos   = collectAllPhotos();
+  const photos   = _galleryCache.length ? _galleryCache : collectAllPhotos();
   const toSend   = photos.filter(p => gallerySelected.has(p.id));
   const statusEl = document.getElementById('galleryUploadStatus');
   const sent = JSON.parse(localStorage.getItem(DRIVE_SENT_KEY) || '{}');
