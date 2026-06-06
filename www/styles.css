@@ -1250,3 +1250,116 @@ body.font-large  { font-size: 16px; }
 @media (max-width: 600px) {
   .settings-grid-2col { grid-template-columns: 1fr !important; }
 }
+
+/* ============================================
+   BOTTOM NAVIGATION — Mobile/APK Only
+   Hanya muncul di layar <= 900px
+   ============================================ */
+.bottom-nav {
+  display: none; /* hidden di desktop */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-100);
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+  z-index: 150;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.bottom-nav::-webkit-scrollbar { display: none; }
+
+/* Layout: flex dengan item sama lebar */
+.bottom-nav {
+  display: none;
+  flex-direction: row;
+  align-items: stretch;
+}
+.bottom-nav-item {
+  flex: 1;
+  min-width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--gray-400);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  font-family: var(--font-body);
+}
+.bottom-nav-item i {
+  font-size: 19px;
+  transition: transform 0.2s ease;
+}
+.bottom-nav-item span {
+  display: none; /* Hanya ikon — no text */
+}
+.bottom-nav-item.active {
+  color: var(--green-600);
+}
+.bottom-nav-item.active i {
+  transform: translateY(-2px);
+}
+.bottom-nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 3px;
+  background: var(--green-500);
+  border-radius: 0 0 3px 3px;
+}
+.bottom-nav-item:active { opacity: 0.7; }
+
+/* Tampilkan di mobile */
+@media (max-width: 900px) {
+  .bottom-nav {
+    display: flex;
+  }
+  /* Beri ruang di bawah konten agar tidak tertutup bottom nav */
+  .page-content {
+    padding-bottom: 76px !important;
+  }
+  /* Sembunyikan sidebar di mobile — pakai bottom nav */
+  .sidebar {
+    display: none !important;
+  }
+  .sidebar-overlay {
+    display: none !important;
+  }
+  .hamburger-btn {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+  }
+  /* FAB naik sedikit agar tidak ketutup bottom nav */
+  .fab-container {
+    bottom: 72px;
+  }
+  /* Toast juga naik */
+  #toast-container {
+    bottom: 72px;
+  }
+}
+
+/* Dark mode bottom nav */
+body.dark .bottom-nav {
+  background: #111315;
+  border-top-color: #1f2226;
+}
+body.dark .bottom-nav-item {
+  color: #6b7280;
+}
+body.dark .bottom-nav-item.active {
+  color: var(--green-400);
+}
