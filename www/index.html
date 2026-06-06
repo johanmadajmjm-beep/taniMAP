@@ -684,7 +684,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modalFarmer')">Batal</button>
-      <button class="btn btn-primary" onclick="document.getElementById('farmerForm').dispatchEvent(new Event('submit'))">
+      <button class="btn btn-primary" onclick="document.getElementById('farmerForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}))">
         <i class="fas fa-save"></i> Simpan Semua
       </button>
     </div>
