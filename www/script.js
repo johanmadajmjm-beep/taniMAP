@@ -34,18 +34,34 @@ async function universalDownload(blob, filename) {
     try {
       const { Filesystem, Directory } = window.Capacitor.Plugins;
       const { Share } = window.Capacitor.Plugins;
-      if (Filesystem && Share) {
+      if (Filesystem) {
         const base64 = await new Promise((res, rej) => {
           const r = new FileReader();
           r.onload = () => res(r.result.split(',')[1]);
           r.onerror = rej;
           r.readAsDataURL(blob);
         });
-        const written = await Filesystem.writeFile({
-          path: filename, data: base64, directory: Directory.Cache,
-        });
-        await Share.share({ title: filename, url: written.uri, dialogTitle: 'Simpan file' });
-        return true;
+        // Coba simpan langsung ke folder Downloads Android
+        try {
+          await Filesystem.writeFile({
+            path: filename,
+            data: base64,
+            directory: Directory.Documents,
+            recursive: true,
+          });
+          showToast('File disimpan ke folder Documents', 'success');
+          return true;
+        } catch (fsErr) {
+          console.warn('Documents gagal, coba Cache + Share:', fsErr);
+        }
+        // Fallback: simpan ke Cache lalu Share
+        if (Share) {
+          const written = await Filesystem.writeFile({
+            path: filename, data: base64, directory: Directory.Cache,
+          });
+          await Share.share({ title: filename, url: written.uri, dialogTitle: 'Simpan file ke...' });
+          return true;
+        }
       }
     } catch (e) {
       if (e.name === 'AbortError') return true;
@@ -2225,7 +2241,7 @@ async function bukaPreviewPDF() {
     showToast('Menyiapkan PDF...', 'info');
     try {
       _pdfBlob = await _buildPDFBlob(jsPDFLib);
-      const tgl = new Date().toLocaleDateString('id-ID').replace(/\/g,'-');
+      const tgl = new Date().toLocaleDateString('id-ID').replace(/\//g,'-');
       await universalDownload(_pdfBlob, `TaniMap_Laporan_${tgl}.pdf`);
       showToast('PDF berhasil diunduh', 'success');
     } catch(e) {
@@ -3230,6 +3246,9 @@ function collectAllPhotos() {
 function renderGallery() {
   const grid = document.getElementById('galleryGrid');
   if (!grid) return;
+
+  // Reset seleksi saat filter berubah agar tidak ada ghost selection
+  gallerySelected.clear();
 
   const photos = collectAllPhotos();
 
