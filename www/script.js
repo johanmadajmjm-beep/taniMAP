@@ -176,6 +176,7 @@ function navigate(page) {
     crops: ['Data Tanaman', 'Monitoring tanaman petani'],
     production: ['Data Produksi', 'Rekap hasil produksi'],
     reports: ['Laporan', 'Rekap dan export data'],
+    gallery: ['Galeri Foto', 'Foto petani, lahan, dan tanaman'],
     settings: ['Pengaturan', 'Konfigurasi aplikasi'],
   };
   const t = titles[page] || [page, ''];
@@ -193,6 +194,9 @@ function navigate(page) {
       renderMapMarkers();
     }, 100);
   }
+
+  // Render galeri saat dibuka
+  if (page === 'gallery') renderGallery();
 
   // Tutup sidebar di mobile
   if (window.innerWidth < 900) closeSidebar();
@@ -3016,155 +3020,182 @@ function handleBackButton() {
 // initBackButton dipanggil dari DOMContentLoaded utama
 
 // ============================================================
-// GOOGLE DRIVE BACKUP & RESTORE
+// GALERI FOTO
 // ============================================================
 
-const GDRIVE_CLIENT_ID = '302226546386-r864vopnd4c0s5d30hbj4hcpvoqij3j3.apps.googleusercontent.com';
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-let gdriveToken = null;
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFV8qVmUpoYXZKJ8WPvJyojggePHtBwW0F2bP9XiwdyaKz-Km5QO2ez6vESpju1WfKDA/exec';
+const DRIVE_SENT_KEY  = 'tanimap_drive_sent'; // key localStorage untuk foto yang sudah terkirim
 
 /**
- * Minta akses OAuth ke Google Drive
+ * Kumpulkan semua foto dari farmers
+ * Return array: { id, filename, base64, type, farmerName, sentToDrive }
  */
-function gdriveAuth(callback) {
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GDRIVE_CLIENT_ID,
-    scope: GDRIVE_SCOPE,
-    callback: (response) => {
-      if (response.error) {
-        showToast('Gagal login Google Drive: ' + response.error, 'error');
-        return;
-      }
-      gdriveToken = response.access_token;
-      callback(gdriveToken);
-    },
-  });
-  tokenClient.requestAccessToken();
-}
+function collectAllPhotos() {
+  const sent = JSON.parse(localStorage.getItem(DRIVE_SENT_KEY) || '{}');
+  const filter = document.getElementById('galleryFilter')?.value || 'all';
+  const photos = [];
 
-/**
- * Backup semua data ke Google Drive sebagai file JSON
- */
-function backupToDrive() {
-  const statusEl = document.getElementById('driveStatusBackup');
-  statusEl.textContent = 'Menghubungkan ke Google...';
+  farmers.forEach(f => {
+    const nama = f.nama || 'Petani';
 
-  gdriveAuth(async (token) => {
-    try {
-      statusEl.textContent = 'Mengunggah data...';
+    // Foto petani
+    if ((filter === 'all' || filter === 'petani') && f.foto && f.foto.startsWith('data:image')) {
+      const filename = `${nama}.jpg`;
+      photos.push({ id: `petani_${f.id}`, filename, base64: f.foto, type: 'petani', farmerName: nama, sentToDrive: !!sent[filename] });
+    }
 
-      const allData = {
-        version: '1.0',
-        tanggal: new Date().toISOString(),
-        farmers: JSON.parse(localStorage.getItem('tanimap_farmers') || '[]'),
-      };
-
-      const filename = `tanimap-backup-${new Date().toISOString().slice(0,10)}.json`;
-      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-
-      const metadata = { name: filename, mimeType: 'application/json' };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', blob);
-
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
+    // Foto lahan
+    if (filter === 'all' || filter === 'lahan') {
+      (f.lahan || []).forEach(l => {
+        if (l.foto && l.foto.startsWith('data:image')) {
+          const filename = `${nama}_${l.nama || 'Lahan'}.jpg`;
+          photos.push({ id: `lahan_${f.id}_${l.id}`, filename, base64: l.foto, type: 'lahan', farmerName: nama, sentToDrive: !!sent[filename] });
+        }
       });
-
-      if (!res.ok) throw new Error('Upload gagal: ' + res.status);
-
-      const result = await res.json();
-      const waktu = new Date().toLocaleString('id-ID');
-      statusEl.textContent = `✅ Terakhir backup: ${waktu}`;
-      localStorage.setItem('tanimap_lastBackup', waktu);
-      showToast(`Backup berhasil! File: ${filename}`, 'success');
-    } catch (err) {
-      statusEl.textContent = '❌ Backup gagal';
-      showToast('Backup gagal: ' + err.message, 'error');
     }
+
+    // Foto tanaman
+    if (filter === 'all' || filter === 'tanaman') {
+      (f.tanaman || []).forEach(t => {
+        if (t.foto && t.foto.startsWith('data:image')) {
+          const filename = `${nama}_${t.nama || 'Tanaman'}.jpg`;
+          photos.push({ id: `tanaman_${f.id}_${t.id}`, filename, base64: t.foto, type: 'tanaman', farmerName: nama, sentToDrive: !!sent[filename] });
+        }
+      });
+    }
+  });
+
+  return photos;
+}
+
+/**
+ * Render grid galeri foto
+ */
+function renderGallery() {
+  const grid = document.getElementById('galleryGrid');
+  if (!grid) return;
+
+  const photos = collectAllPhotos();
+
+  if (photos.length === 0) {
+    grid.innerHTML = `<div style="color:var(--gray-400);font-size:13px;grid-column:1/-1;text-align:center;padding:40px 0">
+      <i class="fas fa-images" style="font-size:32px;margin-bottom:8px;display:block"></i>
+      Belum ada foto tersimpan
+    </div>`;
+    return;
+  }
+
+  const badgeColor = { petani: 'var(--green-600)', lahan: 'var(--blue-500)', tanaman: '#f59e0b' };
+  const badgeLabel = { petani: 'Petani', lahan: 'Lahan', tanaman: 'Tanaman' };
+
+  grid.innerHTML = photos.map(p => `
+    <div class="gallery-card" id="gcard_${p.id}" style="position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--gray-100);cursor:pointer;border:2.5px solid transparent;transition:border-color .2s" onclick="galleryToggleSelect('${p.id}')">
+      <img src="${p.base64}" style="width:100%;height:130px;object-fit:cover;display:block" loading="lazy" />
+      <div style="padding:6px 8px;font-size:11px;font-weight:600;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.farmerName}</div>
+      <div style="padding:0 8px 6px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:${badgeColor[p.type]};text-transform:uppercase">${badgeLabel[p.type]}</span>
+        ${p.sentToDrive ? `<span title="Sudah terkirim ke Drive" style="color:#34a853;font-size:13px"><i class="fas fa-cloud-upload-alt"></i></span>` : `<span style="color:var(--gray-300);font-size:13px"><i class="fas fa-cloud"></i></span>`}
+      </div>
+      <!-- Checkbox overlay -->
+      <div id="gcheck_${p.id}" style="display:none;position:absolute;top:6px;right:6px;width:22px;height:22px;background:var(--green-600);border-radius:50%;align-items:center;justify-content:center">
+        <i class="fas fa-check" style="color:white;font-size:11px"></i>
+      </div>
+    </div>
+  `).join('');
+}
+
+let gallerySelected = new Set();
+
+function galleryToggleSelect(id) {
+  const card  = document.getElementById('gcard_' + id);
+  const check = document.getElementById('gcheck_' + id);
+  if (!card) return;
+
+  if (gallerySelected.has(id)) {
+    gallerySelected.delete(id);
+    card.style.borderColor  = 'transparent';
+    check.style.display     = 'none';
+  } else {
+    gallerySelected.add(id);
+    card.style.borderColor  = 'var(--green-600)';
+    check.style.display     = 'flex';
+  }
+}
+
+function gallerySelectAll() {
+  const photos = collectAllPhotos();
+  photos.forEach(p => {
+    gallerySelected.add(p.id);
+    const card  = document.getElementById('gcard_' + p.id);
+    const check = document.getElementById('gcheck_' + p.id);
+    if (card)  card.style.borderColor = 'var(--green-600)';
+    if (check) check.style.display    = 'flex';
   });
 }
 
 /**
- * Tampilkan daftar file backup dari Google Drive lalu restore
+ * Kirim foto yang dipilih ke Google Drive via Apps Script
  */
-function restoreFromDrive() {
-  const statusEl = document.getElementById('driveStatusRestore');
-  statusEl.textContent = 'Menghubungkan ke Google...';
-
-  gdriveAuth(async (token) => {
-    try {
-      statusEl.textContent = 'Mencari file backup...';
-
-      const res = await fetch(
-        "https://www.googleapis.com/drive/v3/files?q=name+contains+'tanimap-backup'+and+mimeType='application/json'&orderBy=createdTime+desc&fields=files(id,name,createdTime)&pageSize=10",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!res.ok) throw new Error('Gagal mengambil daftar file');
-      const data = await res.json();
-      const files = data.files || [];
-
-      if (files.length === 0) {
-        statusEl.textContent = 'Tidak ada file backup ditemukan';
-        showToast('Tidak ada file backup TaniMap di Google Drive', 'warning');
-        return;
-      }
-
-      // Tampilkan pilihan file via confirm sederhana
-      const fileList = files.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
-      const choice = prompt(`Pilih nomor file backup yang akan dimuat:\n\n${fileList}\n\n(Ketik angka 1-${files.length})`);
-      const idx = parseInt(choice) - 1;
-
-      if (isNaN(idx) || idx < 0 || idx >= files.length) {
-        statusEl.textContent = 'Restore dibatalkan';
-        return;
-      }
-
-      const selectedFile = files[idx];
-      statusEl.textContent = `Memuat ${selectedFile.name}...`;
-
-      const dlRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${selectedFile.id}?alt=media`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!dlRes.ok) throw new Error('Gagal mengunduh file');
-      const json = await dlRes.json();
-
-      if (!json.farmers || !Array.isArray(json.farmers)) {
-        throw new Error('Format file backup tidak valid');
-      }
-
-      const confirm_ = confirm(`Restore ${json.farmers.length} data petani dari "${selectedFile.name}"?\n\nData yang ada sekarang akan ditimpa.`);
-      if (!confirm_) {
-        statusEl.textContent = 'Restore dibatalkan';
-        return;
-      }
-
-      localStorage.setItem('tanimap_farmers', JSON.stringify(json.farmers));
-      farmers = json.farmers;
-      renderDashboard();
-      renderFarmersGrid();
-
-      const waktu = new Date().toLocaleString('id-ID');
-      statusEl.textContent = `✅ Restore berhasil: ${waktu}`;
-      showToast(`Berhasil memuat ${json.farmers.length} data petani dari Drive!`, 'success');
-
-    } catch (err) {
-      statusEl.textContent = '❌ Restore gagal';
-      showToast('Restore gagal: ' + err.message, 'error');
-    }
-  });
-}
-
-// Tampilkan info backup terakhir saat settings dibuka
-(function initDriveStatus() {
-  const lastBackup = localStorage.getItem('tanimap_lastBackup');
-  if (lastBackup) {
-    const el = document.getElementById('driveStatusBackup');
-    if (el) el.textContent = `✅ Terakhir backup: ${lastBackup}`;
+async function gallerySendSelected() {
+  if (gallerySelected.size === 0) {
+    showToast('Pilih foto terlebih dahulu', 'warning');
+    return;
   }
-})();
+
+  const photos   = collectAllPhotos();
+  const toSend   = photos.filter(p => gallerySelected.has(p.id));
+  const statusEl = document.getElementById('galleryUploadStatus');
+  const msgEl    = document.getElementById('galleryUploadMsg');
+
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'var(--blue-50)';
+  statusEl.style.color      = 'var(--blue-600)';
+  statusEl.style.borderColor= 'var(--blue-100)';
+
+  const sent = JSON.parse(localStorage.getItem(DRIVE_SENT_KEY) || '{}');
+  let sukses = 0, gagal = 0;
+
+  for (let i = 0; i < toSend.length; i++) {
+    const p = toSend[i];
+    msgEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengirim ${i + 1}/${toSend.length}: ${p.filename}`;
+
+    // Ambil base64 murni (tanpa prefix data:image/...;base64,)
+    const base64pure = p.base64.split(',')[1];
+    const mimeType   = p.base64.split(';')[0].replace('data:', '') || 'image/jpeg';
+
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: p.filename, base64: base64pure, mimeType }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        sent[p.filename] = new Date().toISOString();
+        sukses++;
+      } else {
+        gagal++;
+      }
+    } catch (e) {
+      gagal++;
+    }
+  }
+
+  localStorage.setItem(DRIVE_SENT_KEY, JSON.stringify(sent));
+  gallerySelected.clear();
+  renderGallery();
+
+  if (gagal === 0) {
+    statusEl.style.background  = 'var(--green-50,#f0fdf4)';
+    statusEl.style.color       = '#166534';
+    statusEl.style.borderColor = '#bbf7d0';
+    msgEl.innerHTML = `<i class="fas fa-check-circle"></i> ${sukses} foto berhasil dikirim ke Google Drive!`;
+    showToast(`${sukses} foto berhasil dikirim ke Drive`, 'success');
+  } else {
+    statusEl.style.background  = '#fff7ed';
+    statusEl.style.color       = '#9a3412';
+    statusEl.style.borderColor = '#fed7aa';
+    msgEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${sukses} berhasil, ${gagal} gagal. Coba lagi.`;
+    showToast(`${gagal} foto gagal dikirim`, 'error');
+  }
+}
