@@ -3014,3 +3014,157 @@ function handleBackButton() {
 }
 
 // initBackButton dipanggil dari DOMContentLoaded utama
+
+// ============================================================
+// GOOGLE DRIVE BACKUP & RESTORE
+// ============================================================
+
+const GDRIVE_CLIENT_ID = '302226546386-r864vopnd4c0s5d30hbj4hcpvoqij3j3.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let gdriveToken = null;
+
+/**
+ * Minta akses OAuth ke Google Drive
+ */
+function gdriveAuth(callback) {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: (response) => {
+      if (response.error) {
+        showToast('Gagal login Google Drive: ' + response.error, 'error');
+        return;
+      }
+      gdriveToken = response.access_token;
+      callback(gdriveToken);
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+/**
+ * Backup semua data ke Google Drive sebagai file JSON
+ */
+function backupToDrive() {
+  const statusEl = document.getElementById('driveStatusBackup');
+  statusEl.textContent = 'Menghubungkan ke Google...';
+
+  gdriveAuth(async (token) => {
+    try {
+      statusEl.textContent = 'Mengunggah data...';
+
+      const allData = {
+        version: '1.0',
+        tanggal: new Date().toISOString(),
+        farmers: JSON.parse(localStorage.getItem('tanimap_farmers') || '[]'),
+      };
+
+      const filename = `tanimap-backup-${new Date().toISOString().slice(0,10)}.json`;
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+
+      const metadata = { name: filename, mimeType: 'application/json' };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+
+      if (!res.ok) throw new Error('Upload gagal: ' + res.status);
+
+      const result = await res.json();
+      const waktu = new Date().toLocaleString('id-ID');
+      statusEl.textContent = `✅ Terakhir backup: ${waktu}`;
+      localStorage.setItem('tanimap_lastBackup', waktu);
+      showToast(`Backup berhasil! File: ${filename}`, 'success');
+    } catch (err) {
+      statusEl.textContent = '❌ Backup gagal';
+      showToast('Backup gagal: ' + err.message, 'error');
+    }
+  });
+}
+
+/**
+ * Tampilkan daftar file backup dari Google Drive lalu restore
+ */
+function restoreFromDrive() {
+  const statusEl = document.getElementById('driveStatusRestore');
+  statusEl.textContent = 'Menghubungkan ke Google...';
+
+  gdriveAuth(async (token) => {
+    try {
+      statusEl.textContent = 'Mencari file backup...';
+
+      const res = await fetch(
+        "https://www.googleapis.com/drive/v3/files?q=name+contains+'tanimap-backup'+and+mimeType='application/json'&orderBy=createdTime+desc&fields=files(id,name,createdTime)&pageSize=10",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!res.ok) throw new Error('Gagal mengambil daftar file');
+      const data = await res.json();
+      const files = data.files || [];
+
+      if (files.length === 0) {
+        statusEl.textContent = 'Tidak ada file backup ditemukan';
+        showToast('Tidak ada file backup TaniMap di Google Drive', 'warning');
+        return;
+      }
+
+      // Tampilkan pilihan file via confirm sederhana
+      const fileList = files.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+      const choice = prompt(`Pilih nomor file backup yang akan dimuat:\n\n${fileList}\n\n(Ketik angka 1-${files.length})`);
+      const idx = parseInt(choice) - 1;
+
+      if (isNaN(idx) || idx < 0 || idx >= files.length) {
+        statusEl.textContent = 'Restore dibatalkan';
+        return;
+      }
+
+      const selectedFile = files[idx];
+      statusEl.textContent = `Memuat ${selectedFile.name}...`;
+
+      const dlRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${selectedFile.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!dlRes.ok) throw new Error('Gagal mengunduh file');
+      const json = await dlRes.json();
+
+      if (!json.farmers || !Array.isArray(json.farmers)) {
+        throw new Error('Format file backup tidak valid');
+      }
+
+      const confirm_ = confirm(`Restore ${json.farmers.length} data petani dari "${selectedFile.name}"?\n\nData yang ada sekarang akan ditimpa.`);
+      if (!confirm_) {
+        statusEl.textContent = 'Restore dibatalkan';
+        return;
+      }
+
+      localStorage.setItem('tanimap_farmers', JSON.stringify(json.farmers));
+      farmers = json.farmers;
+      renderDashboard();
+      renderFarmersGrid();
+
+      const waktu = new Date().toLocaleString('id-ID');
+      statusEl.textContent = `✅ Restore berhasil: ${waktu}`;
+      showToast(`Berhasil memuat ${json.farmers.length} data petani dari Drive!`, 'success');
+
+    } catch (err) {
+      statusEl.textContent = '❌ Restore gagal';
+      showToast('Restore gagal: ' + err.message, 'error');
+    }
+  });
+}
+
+// Tampilkan info backup terakhir saat settings dibuka
+(function initDriveStatus() {
+  const lastBackup = localStorage.getItem('tanimap_lastBackup');
+  if (lastBackup) {
+    const el = document.getElementById('driveStatusBackup');
+    if (el) el.textContent = `✅ Terakhir backup: ${lastBackup}`;
+  }
+})();
