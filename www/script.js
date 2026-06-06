@@ -581,18 +581,43 @@ function openEditFarmer(id) {
   openModal('modalFarmer');
 }
 
+
+/**
+ * Kompres foto sebelum disimpan ke localStorage
+ * Max 800x800px, kualitas 0.7 — hasil ~30-60KB per foto
+ */
+function compressImage(file, maxSize = 800, quality = 0.7) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else        { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function previewFarmerPhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const data = e.target.result;
+  compressImage(file).then(data => {
     document.getElementById('farmerPhotoData').value = data;
     document.getElementById('farmerPhotoPreview').src = data;
     document.getElementById('farmerPhotoPreviewWrap').style.display = 'block';
     document.getElementById('photoUploadArea').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 function clearFarmerPhoto() {
@@ -965,20 +990,16 @@ function addProduksiRow(data = {}) {
 function previewMiniPhoto(input, uid) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const data = e.target.result;
+  compressImage(file).then(data => {
     const wrap = document.getElementById('wrap_' + uid);
     const prevDiv = document.getElementById('prev_' + uid);
     const img = prevDiv.querySelector('img');
-    // Simpan ke hidden input (ambil yang pertama — img class juga hidden input)
     const hiddenInputs = wrap.querySelectorAll('input[type="hidden"]');
     hiddenInputs.forEach(h => h.value = data);
     img.src = data;
     img.style.display = 'block';
     prevDiv.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 /**
