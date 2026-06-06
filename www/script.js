@@ -25,6 +25,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAppPreferences();        // Muat tema & ukuran huruf
   initBackButton();            // Aktifkan back button handler
 });
+// ============================================================
+//  UNIVERSAL DOWNLOAD — APK Android + Browser
+// ============================================================
+async function universalDownload(blob, filename) {
+  // Capacitor native (APK Android)
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    try {
+      const { Filesystem, Directory } = window.Capacitor.Plugins;
+      const { Share } = window.Capacitor.Plugins;
+      if (Filesystem && Share) {
+        const base64 = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result.split(',')[1]);
+          r.onerror = rej;
+          r.readAsDataURL(blob);
+        });
+        const written = await Filesystem.writeFile({
+          path: filename, data: base64, directory: Directory.Cache,
+        });
+        await Share.share({ title: filename, url: written.uri, dialogTitle: 'Simpan file' });
+        return true;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return true;
+      console.warn('Capacitor download gagal:', e);
+    }
+  }
+  // Web Share API (mobile browser)
+  try {
+    const mime = blob.type || 'application/octet-stream';
+    const file = new File([blob], filename, { type: mime });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      return true;
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return true;
+  }
+  // <a>.download fallback (desktop)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return true;
+}
+
+
 
 /**
  * Muat data dari localStorage. Jika kosong, muat dari farmers.json
@@ -1128,32 +1177,18 @@ async function printKartu() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
   try {
-    // html2canvas → Blob → download (bekerja di Android WebView)
+    // Capture kartu jadi gambar
     const canvas = await html2canvas(kartu, {
       scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false
     });
+    // Konversi canvas → Blob via fetch (non-blocking, tidak freeze)
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgBlob = await (await fetch(imgData)).blob();
+    const farmerName = kartu.querySelector('.kartu-nama')?.textContent || 'petani';
+    const fname = 'kartu-' + farmerName.replace(/\s+/g, '-').toLowerCase() + '.jpg';
 
-    // Coba Web Share API dulu (Android native)
-    const byteStr = atob(imgData.split(',')[1]);
-    const ab = new ArrayBuffer(byteStr.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
-    const imgBlob = new Blob([ab], { type: 'image/jpeg' });
-    const imgFile = new File([imgBlob], 'kartu-petani.jpg', { type: 'image/jpeg' });
-
-    if (navigator.canShare && navigator.canShare({ files: [imgFile] })) {
-      await navigator.share({ files: [imgFile], title: 'Kartu Petani TaniMap' });
-    } else {
-      // Fallback: download langsung
-      const url = URL.createObjectURL(imgBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'kartu-petani.jpg';
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast('Kartu berhasil disimpan', 'success');
-    }
+    await universalDownload(imgBlob, fname);
+    showToast('Kartu berhasil disimpan', 'success');
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Print error:', err);
@@ -1245,75 +1280,24 @@ async function simpanFotoModal() {
   const resetBtn = () => {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Simpan ke HP'; }
   };
-
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
   try {
-    // Konversi base64 → Blob (tanpa fetch — bekerja di semua environment)
-    const dataUrl   = _currentFotoData;
-    const fileName  = _currentFotoFilename || ('TaniMap_' + Date.now() + '.jpg');
-    const base64Raw = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-    const mimeType  = dataUrl.includes('data:') ? dataUrl.split(';')[0].split(':')[1] : 'image/jpeg';
+    const dataUrl  = _currentFotoData;
+    const fileName = _currentFotoFilename || ('TaniMap_' + Date.now() + '.jpg');
 
-    // Decode base64 → binary → Uint8Array → Blob
-    const binary = atob(base64Raw);
-    const bytes  = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mimeType });
+    // Konversi base64 → Blob via fetch (non-blocking, tidak freeze UI)
+    const blob = await (await fetch(dataUrl)).blob();
 
-    // ── STRATEGI 1: Capacitor native (APK Android) ──
-    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-      const { Filesystem, Directory } = window.Capacitor.Plugins;
-      const { Share } = window.Capacitor.Plugins;
-
-      if (Filesystem && Share) {
-        const writeResult = await Filesystem.writeFile({
-          path: fileName,
-          data: base64Raw,
-          directory: Directory.Cache,
-        });
-        await Share.share({
-          title: 'Simpan Foto TaniMap',
-          url: writeResult.uri,
-          dialogTitle: 'Simpan foto ke galeri',
-        });
-        resetBtn();
-        return;
-      }
-    }
-
-    // ── STRATEGI 2: Web Share API dengan File ──
-    const file = new File([blob], fileName, { type: mimeType });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Foto TaniMap' });
-      resetBtn();
-      return;
-    }
-
-    // ── STRATEGI 3: <a>.download — desktop browser ──
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    showToast('Foto sedang diunduh', 'success');
-    resetBtn();
-
+    await universalDownload(blob, fileName);
+    showToast('Foto berhasil disimpan', 'success');
   } catch (err) {
-    resetBtn();
-    if (err.name === 'AbortError') return; // user tutup share sheet — normal
-    console.error('Simpan foto error:', err);
-    // Tampilkan instruksi tekan tahan sebagai fallback terakhir
-    const infoEl = document.getElementById('modalFotoInfo');
-    if (infoEl) {
-      infoEl.innerHTML =
-        '<div style="background:#fff4e6;border:1px solid #f59e0b;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;color:#92400e">' +
-        '<i class="fas fa-hand-pointer"></i> <b>Tekan tahan pada foto</b>, lalu pilih <b>"Simpan Gambar"</b>' +
-        '</div>';
+    if (err.name !== 'AbortError') {
+      console.error('Simpan foto error:', err);
+      showToast('Gagal menyimpan foto', 'error');
     }
+  } finally {
+    resetBtn();
   }
 }
 
@@ -2166,7 +2150,7 @@ function renderReports() {
  * Sheet 5: Produksi
  * Sheet 6: Hama & Penyakit
  */
-function exportExcel() {
+async function exportExcel() {
   // SheetJS bisa terdaftar sebagai XLSX di window
   const XLSXlib = window.XLSX;
   if (!XLSXlib) {
@@ -2248,23 +2232,17 @@ function exportExcel() {
   XLSXlib.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
 
   // Simpan file
-  // Download via blob — kompatibel Android WebView
-  const wbout = XLSXlib.write(wb, { bookType: 'xlsx', type: 'array' });
+  const wbout  = XLSXlib.write(wb, { bookType: 'xlsx', type: 'array' });
   const xlBlob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const xlUrl  = URL.createObjectURL(xlBlob);
   const xlName = `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`;
-  const xlA = document.createElement('a');
-  xlA.href = xlUrl; xlA.download = xlName;
-  document.body.appendChild(xlA); xlA.click();
-  document.body.removeChild(xlA);
-  setTimeout(() => URL.revokeObjectURL(xlUrl), 5000);
+  await universalDownload(xlBlob, xlName);
   showToast('Excel berhasil diexport (6 sheet)', 'success');
 }
 
 /**
  * Export ke PDF — berisi semua rekap laporan
  */
-function exportPDF() {
+async function exportPDF() {
   const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
   if (!jsPDFLib) {
     showToast('Library PDF belum termuat. Coba refresh halaman.', 'error');
@@ -2415,12 +2393,7 @@ function exportPDF() {
   const namaFile = 'TaniMap_Laporan_' + new Date().toLocaleDateString('id-ID').replace(/\//g, '-') + '.pdf';
   // Download via blob — kompatibel Android WebView
   const pdfBlob = doc.output('blob');
-  const pdfUrl  = URL.createObjectURL(pdfBlob);
-  const pdfA = document.createElement('a');
-  pdfA.href = pdfUrl; pdfA.download = namaFile;
-  document.body.appendChild(pdfA); pdfA.click();
-  document.body.removeChild(pdfA);
-  setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
+  await universalDownload(pdfBlob, namaFile);
   showToast('PDF berhasil diexport', 'success');
 }
 
@@ -2951,7 +2924,8 @@ async function downloadMapPDF() {
 
     // Simpan PDF
     const namaFile = `TaniMap_Peta_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`;
-    doc.save(namaFile);
+    const mapPdfBlob = doc.output('blob');
+    await universalDownload(mapPdfBlob, namaFile);
     showToast('PDF peta berhasil didownload!', 'success');
 
   } catch (err) {
