@@ -68,18 +68,7 @@ async function universalDownload(blob, filename) {
       console.warn('Capacitor download gagal:', e);
     }
   }
-  // Web Share API (mobile browser)
-  try {
-    const mime = blob.type || 'application/octet-stream';
-    const file = new File([blob], filename, { type: mime });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename });
-      return true;
-    }
-  } catch (e) {
-    if (e.name === 'AbortError') return true;
-  }
-  // <a>.download fallback (desktop)
+  // Browser biasa (GitHub Pages / desktop): langsung download via <a> tag
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
