@@ -897,6 +897,7 @@
 <!-- QRCode untuk kartu petani -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="script.js"></script>
@@ -1000,13 +1001,13 @@
 
 <!-- MODAL PREVIEW PDF -->
 <div class="modal-overlay" id="modalPreviewPDF">
-  <div class="modal" style="max-width:98vw;width:720px">
+  <div class="modal" style="max-width:98vw;width:860px">
     <div class="modal-header">
       <div class="modal-title"><i class="fas fa-file-pdf" style="color:#e53935"></i> Preview Laporan PDF</div>
       <button class="modal-close" onclick="closeModal('modalPreviewPDF')">&times;</button>
     </div>
-    <div class="modal-body" style="padding:16px;max-height:70vh;overflow-y:auto">
-      <div id="pdfPreviewContent"></div>
+    <div class="modal-body" style="padding:0;max-height:75vh;overflow:hidden">
+      <div id="pdfPreviewContent" style="height:75vh"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modalPreviewPDF')">
