@@ -2020,6 +2020,7 @@ function renderProductionTable() {
       <td>${p.tahun} (${p.musim})</td>
       <td>${p.farmerName}</td>
       <td>${commodityBadge(p.komoditas)}</td>
+      <td class="hide-mobile">${p.luas ? p.luas + ' Ha' : '-'}</td>
       <td class="hide-mobile">${p.jumlah} ${p.satuan}</td>
       <td class="hide-mobile">Rp ${formatNumber(p.harga)}</td>
       <td class="fw-bold text-green">Rp ${formatNumber(p.total)}</td>
@@ -2169,6 +2170,23 @@ function resetMap() {
 //  REPORTS
 // ============================================================
 
+
+/**
+ * Kumpulkan semua hama dari kunjungan semua petani
+ */
+function collectAllHama() {
+  const result = [];
+  farmers.forEach(f => {
+    // Hama lama (dari f.hama — backward compatible)
+    (f.hama || []).forEach(h => result.push({ ...h, farmerName: f.nama, desa: f.desa }));
+    // Hama baru (dari kunjungan.hama)
+    (f.kunjungan || []).forEach(k => {
+      (k.hama || []).forEach(h => result.push({ ...h, farmerName: f.nama, desa: f.desa, tanggalKunjungan: k.tanggal }));
+    });
+  });
+  return result;
+}
+
 function renderReports() {
   const el = document.getElementById('reportContent');
   if (!el) return;
@@ -2190,8 +2208,7 @@ function renderReports() {
   });
 
   // Hama rekap
-  let allHama = [];
-  farmers.forEach(f => (f.hama||[]).forEach(h => allHama.push({...h, farmerName:f.nama})));
+  const allHama = collectAllHama();
 
   el.innerHTML = `
     <div class="report-section">
@@ -2442,19 +2459,19 @@ function _buildExcelWorkbook(XLSXlib) {
   XLSXlib.utils.book_append_sheet(wb, wsKunjungan, 'Kunjungan');
 
   // ---- Sheet 5: Produksi ----
-  const produksiData = [['ID','Nama Petani','Desa','Tahun','Musim','Komoditas','Jumlah','Satuan','Harga/Satuan (Rp)','Total (Rp)','Pembeli','Catatan']];
+  const produksiData = [['ID','Nama Petani','Desa','Tahun','Musim','Komoditas','Jumlah','Satuan','Luas (Ha)','Harga/Satuan (Rp)','Total (Rp)','Pembeli','Catatan']];
   farmers.forEach(f => (f.produksi||[]).forEach(p => {
-    produksiData.push([p.id, f.nama, f.desa, p.tahun, p.musim, p.komoditas, p.jumlah, p.satuan, p.harga, p.total, p.pembeli, p.catatan]);
+    produksiData.push([p.id, f.nama, f.desa, p.tahun, p.musim, p.komoditas, p.jumlah, p.satuan, p.luas||0, p.harga, p.total, p.pembeli, p.catatan]);
   }));
   const wsProduksi = XLSXlib.utils.aoa_to_sheet(produksiData);
-  wsProduksi['!cols'] = [10,20,14,8,10,14,8,8,14,16,18,20].map(w=>({wch:w}));
+  wsProduksi['!cols'] = [10,20,14,8,10,14,8,8,8,14,16,18,20].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsProduksi, 'Produksi');
 
   // ---- Sheet 6: Hama & Penyakit ----
-  const hamaData = [['ID','Nama Petani','Desa','Nama Hama/Penyakit','Tanaman','Tingkat','Solusi','Status']];
-  farmers.forEach(f => (f.hama||[]).forEach(h => {
-    hamaData.push([h.id, f.nama, f.desa, h.nama, h.tanaman, h.tingkat, h.solusi, h.status]);
-  }));
+  const hamaData = [['ID','Nama Petani','Desa','Nama Hama/Penyakit','Tanaman','Tingkat','Solusi','Status','Tgl Kunjungan']];
+  collectAllHama().forEach(h => {
+    hamaData.push([h.id||'-', h.farmerName, h.desa, h.nama, h.tanaman, h.tingkat, h.solusi||'-', h.status, h.tanggalKunjungan||'-']);
+  });
   const wsHama = XLSXlib.utils.aoa_to_sheet(hamaData);
   wsHama['!cols'] = [10,20,14,20,14,10,28,16].map(w=>({wch:w}));
   XLSXlib.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
@@ -2576,8 +2593,7 @@ async function _buildPDFBlob(jsPDFLib) {
   }
 
   // ---- 4. Rekap Hama & Penyakit ----
-  const allHama = [];
-  farmers.forEach(f => (f.hama||[]).forEach(h => allHama.push({...h, farmerName: f.nama, desa: f.desa})));
+  const allHama = collectAllHama();
   if (allHama.length) {
     sectionTitle('REKAP HAMA DAN PENYAKIT');
     doc.autoTable({
@@ -2751,7 +2767,7 @@ function getFallbackData() {
 // ============================================================
 
 // ⚠️ GANTI dengan URL Web App Google Apps Script kamu setelah deploy
-const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzAW47Jw9YlELywZujueVvIaAzuT0QymgXTinnIVHXvYgsOqJ697vXZjBDdJ0LbwCKh/exec';
+const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzMRTLO8niRcOgbEGkIqMBR90yMwFytxslTG6x0Fy-rR0oFK_dt3pubbQb63atqzjvy/exec';
 
 /**
  * Buka modal konfirmasi sebelum kirim ke Google Sheets
@@ -2845,10 +2861,28 @@ async function doSendToSheets() {
 
   if (kirimKunjungan) {
     payload.kunjungan = [];
+    payload.hama = [];
     farmers.forEach(f => {
       (f.kunjungan || []).forEach(k => {
         payload.kunjungan.push({
-          ...k, farmerName: f.nama, farmerVillage: f.desa
+          id: k.id, tanggal: k.tanggal, petugas: k.petugas,
+          kondisi: k.kondisi, masalah: k.masalah,
+          rekomendasi: k.rekomendasi, catatan: k.catatan,
+          lat: k.lat, lng: k.lng,
+          farmerName: f.nama, farmerVillage: f.desa
+        });
+        // Hama dari kunjungan
+        (k.hama || []).forEach(h => {
+          payload.hama.push({
+            ...h, farmerName: f.nama, farmerVillage: f.desa,
+            tanggalKunjungan: k.tanggal, petugas: k.petugas
+          });
+        });
+      });
+      // Hama lama (backward compatible)
+      (f.hama || []).forEach(h => {
+        payload.hama.push({
+          ...h, farmerName: f.nama, farmerVillage: f.desa, tanggalKunjungan: '-'
         });
       });
     });
@@ -2859,7 +2893,8 @@ async function doSendToSheets() {
     farmers.forEach(f => {
       (f.produksi || []).forEach(p => {
         payload.produksi.push({
-          ...p, farmerName: f.nama, farmerVillage: f.desa
+          ...p, luas: p.luas || 0,
+          farmerName: f.nama, farmerVillage: f.desa
         });
       });
     });
