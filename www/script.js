@@ -367,7 +367,13 @@ function renderFarmersGrid() {
     grid.innerHTML = ''; empty.style.display = 'block'; return;
   }
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map(f => farmerCardHTML(f)).join('');
+  // Urutkan petani terbaru di atas berdasarkan tanggalInput
+  const sorted = [...filtered].sort((a, b) => {
+    const da = new Date(a.tanggalInput || '2000-01-01');
+    const db = new Date(b.tanggalInput || '2000-01-01');
+    return db - da;
+  });
+  grid.innerHTML = sorted.map(f => farmerCardHTML(f)).join('');
 }
 
 function farmerCardHTML(f) {
@@ -1114,49 +1120,48 @@ function cetakKartu(id) {
 /**
  * Cetak kartu petani menggunakan window.print()
  */
-function printKartu() {
+async function printKartu() {
   const kartu = document.getElementById('kartuPetani');
   if (!kartu) return;
 
-  const printWin = window.open('', '_blank', 'width=500,height=650');
-  printWin.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Kartu Petani - TaniMap</title>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-      <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:#f5f5f5; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
-        @media print {
-          body { background:#fff; padding:0; }
-          .no-print { display:none; }
-          @page { size: 90mm 55mm; margin:0; }
-        }
-        .actions { text-align:center; margin-bottom:16px; }
-        .actions button {
-          background:#2d6a35; color:#fff; border:none;
-          padding:10px 24px; border-radius:8px; font-size:14px;
-          font-weight:600; cursor:pointer; margin:0 4px;
-          font-family:'Plus Jakarta Sans',sans-serif;
-        }
-        .actions button.sec { background:#f2f2f7; color:#3a3a3c; }
-      </style>
-    </head>
-    <body>
-      <div>
-        <div class="actions no-print">
-          <button onclick="window.print()">🖨️ Cetak</button>
-          <button class="sec" onclick="window.close()">Tutup</button>
-        </div>
-        ${kartu.outerHTML}
-      </div>
-    </body>
-    </html>
-  `);
-  printWin.document.close();
-  printWin.focus();
+  const btn = document.querySelector('#modalKartu .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+
+  try {
+    // html2canvas → Blob → download (bekerja di Android WebView)
+    const canvas = await html2canvas(kartu, {
+      scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    // Coba Web Share API dulu (Android native)
+    const byteStr = atob(imgData.split(',')[1]);
+    const ab = new ArrayBuffer(byteStr.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+    const imgBlob = new Blob([ab], { type: 'image/jpeg' });
+    const imgFile = new File([imgBlob], 'kartu-petani.jpg', { type: 'image/jpeg' });
+
+    if (navigator.canShare && navigator.canShare({ files: [imgFile] })) {
+      await navigator.share({ files: [imgFile], title: 'Kartu Petani TaniMap' });
+    } else {
+      // Fallback: download langsung
+      const url = URL.createObjectURL(imgBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'kartu-petani.jpg';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('Kartu berhasil disimpan', 'success');
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Print error:', err);
+      showToast('Gagal menyimpan kartu', 'error');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-print"></i> Cetak / Simpan'; }
+  }
 }
 
 // ============================================================
@@ -1953,11 +1958,47 @@ function initMap() {
   }).addTo(map);
 }
 
+function renderMapPanel() {
+  // Stats
+  const statsEl = document.getElementById('mapStats');
+  if (statsEl) {
+    const totalPetani = mapMarkers.length;
+    const commCount = {};
+    mapMarkers.forEach(m => { commCount[m.options.commodity] = (commCount[m.options.commodity]||0)+1; });
+    const topComm = Object.entries(commCount).sort((a,b)=>b[1]-a[1])[0];
+    statsEl.innerHTML = `
+      <div class="map-stat-item"><span class="map-stat-label">Total titik</span><span class="map-stat-val">${totalPetani}</span></div>
+      <div class="map-stat-item"><span class="map-stat-label">Komoditas terbanyak</span><span class="map-stat-val">${topComm ? topComm[0] : '-'}</span></div>
+      <div class="map-stat-item"><span class="map-stat-label">Jenis komoditas</span><span class="map-stat-val">${Object.keys(commCount).length}</span></div>
+    `;
+  }
+
+  // Daftar petani
+  const listEl = document.getElementById('mapFarmerList');
+  if (listEl) {
+    const withGPS = farmers.filter(f => f.lat && f.lng);
+    if (!withGPS.length) {
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:8px">Belum ada titik GPS</div>';
+    } else {
+      listEl.innerHTML = withGPS.slice(0, 8).map(f => {
+        const initials = f.nama.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+        return `<div class="map-farmer-item" onclick="map && map.setView([${f.lat},${f.lng}],15)">
+          <div class="map-farmer-av">${initials}</div>
+          <div><div class="map-farmer-name">${f.nama}</div><div class="map-farmer-desa">${f.desa}</div></div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
 function renderMapMarkers() {
   if (!map) return;
   // Hapus marker lama
   mapMarkers.forEach(m => map.removeLayer(m));
   mapMarkers = [];
+
+  // Update panel info peta
+  setTimeout(renderMapPanel, 200);
 
   const search = (document.getElementById('searchMap')?.value || '').toLowerCase();
   const village = document.getElementById('mapFilterVillage')?.value || '';
@@ -2207,7 +2248,16 @@ function exportExcel() {
   XLSXlib.utils.book_append_sheet(wb, wsHama, 'Hama & Penyakit');
 
   // Simpan file
-  XLSXlib.writeFile(wb, `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`);
+  // Download via blob — kompatibel Android WebView
+  const wbout = XLSXlib.write(wb, { bookType: 'xlsx', type: 'array' });
+  const xlBlob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const xlUrl  = URL.createObjectURL(xlBlob);
+  const xlName = `TaniMap_Laporan_${tgl.replace(/\//g,'-')}.xlsx`;
+  const xlA = document.createElement('a');
+  xlA.href = xlUrl; xlA.download = xlName;
+  document.body.appendChild(xlA); xlA.click();
+  document.body.removeChild(xlA);
+  setTimeout(() => URL.revokeObjectURL(xlUrl), 5000);
   showToast('Excel berhasil diexport (6 sheet)', 'success');
 }
 
@@ -2363,7 +2413,14 @@ function exportPDF() {
   }
 
   const namaFile = 'TaniMap_Laporan_' + new Date().toLocaleDateString('id-ID').replace(/\//g, '-') + '.pdf';
-  doc.save(namaFile);
+  // Download via blob — kompatibel Android WebView
+  const pdfBlob = doc.output('blob');
+  const pdfUrl  = URL.createObjectURL(pdfBlob);
+  const pdfA = document.createElement('a');
+  pdfA.href = pdfUrl; pdfA.download = namaFile;
+  document.body.appendChild(pdfA); pdfA.click();
+  document.body.removeChild(pdfA);
+  setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
   showToast('PDF berhasil diexport', 'success');
 }
 
@@ -2583,6 +2640,11 @@ async function doSendToSheets() {
         id: l.id, nama: l.nama, luas: l.luas,
         status: l.status, jenis: l.jenis,
         lat: l.lat || '', lng: l.lng || '', catatan: l.catatan || ''
+      })),
+      tanaman: (f.tanaman || []).map(t => ({
+        id: t.id, jenis: t.jenis, luasTanam: t.luasTanam,
+        umurTanaman: t.umurTanaman, status: t.status,
+        perkiraanPanen: t.perkiraanPanen || '', catatan: t.catatan || ''
       }))
     }));
   }
