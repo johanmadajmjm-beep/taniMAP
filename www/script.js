@@ -3164,18 +3164,16 @@ async function gallerySendSelected() {
     const mimeType   = p.base64.split(';')[0].replace('data:', '') || 'image/jpeg';
 
     try {
-      const res = await fetch(APPS_SCRIPT_URL, {
+      // Gunakan mode no-cors agar tidak diblokir CORS GitHub Pages
+      await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ filename: p.filename, base64: base64pure, mimeType }),
       });
-      const result = await res.json();
-      if (result.success) {
-        sent[p.filename] = new Date().toISOString();
-        sukses++;
-      } else {
-        gagal++;
-      }
+      // no-cors tidak bisa baca response — jika tidak throw, anggap sukses
+      sent[p.filename] = new Date().toISOString();
+      sukses++;
     } catch (e) {
       gagal++;
     }
