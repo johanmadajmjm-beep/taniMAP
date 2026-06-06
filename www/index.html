@@ -839,46 +839,88 @@
 
 <!-- Toast Container -->
 <!-- ===== BOTTOM NAV (Mobile/APK only) ===== -->
-<nav class="bottom-nav" id="bottomNav">
-  <button class="bottom-nav-item active" id="bnav-dashboard" onclick="navigate('dashboard')">
+<nav class="bottom-nav" id="bottomNav" style="display:grid;grid-template-columns:1fr 1fr 72px 1fr 1fr;align-items:end;padding:0 4px 2px;height:60px">
+
+  <!-- Tab 1: Beranda -->
+  <button class="bottom-nav-item active" id="bnav-dashboard" onclick="navigate('dashboard')" style="flex-direction:column;align-items:center;justify-content:center;display:flex;height:100%;background:none;border:none;cursor:pointer;gap:3px;padding:6px 0">
     <i class="fas fa-home"></i>
     <span>Beranda</span>
   </button>
-  <button class="bottom-nav-item" id="bnav-farmers" onclick="navigate('farmers')">
+
+  <!-- Tab 2: Petani -->
+  <button class="bottom-nav-item" id="bnav-farmers" onclick="navigate('farmers')" style="flex-direction:column;align-items:center;justify-content:center;display:flex;height:100%;background:none;border:none;cursor:pointer;gap:3px;padding:6px 0">
     <i class="fas fa-users"></i>
     <span>Petani</span>
   </button>
-  <button class="bottom-nav-item" id="bnav-map" onclick="navigate('map')">
-    <i class="fas fa-map-marker-alt"></i>
-    <span>Peta</span>
-  </button>
-  <button class="bottom-nav-item" id="bnav-visits" onclick="navigate('visits')">
-    <i class="fas fa-clipboard-list"></i>
-    <span>Kunjungan</span>
-  </button>
-  <button class="bottom-nav-item" id="bnav-crops" onclick="navigate('crops')">
-    <i class="fas fa-seedling"></i>
-    <span>Tanaman</span>
-  </button>
-  <button class="bottom-nav-item" id="bnav-production" onclick="navigate('production')">
-    <i class="fas fa-box"></i>
-    <span>Produksi</span>
-  </button>
-  <button class="bottom-nav-item" id="bnav-reports" onclick="navigate('reports')">
+
+  <!-- Tab 3: Tombol Tambah Tengah (FAB style) -->
+  <div style="display:flex;align-items:center;justify-content:center;padding-bottom:6px">
+    <button onclick="toggleMoreMenu()" id="btnMoreNav"
+      style="width:52px;height:52px;border-radius:50%;background:var(--green-600);border:none;color:white;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .15s">
+      <i class="fas fa-grid-2" id="moreNavIcon"></i>
+    </button>
+  </div>
+
+  <!-- Tab 4: Laporan -->
+  <button class="bottom-nav-item" id="bnav-reports" onclick="navigate('reports')" style="flex-direction:column;align-items:center;justify-content:center;display:flex;height:100%;background:none;border:none;cursor:pointer;gap:3px;padding:6px 0">
     <i class="fas fa-file-alt"></i>
     <span>Laporan</span>
   </button>
-  <button class="bottom-nav-item" id="bnav-gallery" onclick="navigate('gallery')">
-    <i class="fas fa-images"></i>
-    <span>Galeri</span>
-  </button>
-  <button class="bottom-nav-item" id="bnav-settings" onclick="navigate('settings')">
+
+  <!-- Tab 5: Pengaturan -->
+  <button class="bottom-nav-item" id="bnav-settings" onclick="navigate('settings')" style="flex-direction:column;align-items:center;justify-content:center;display:flex;height:100%;background:none;border:none;cursor:pointer;gap:3px;padding:6px 0">
     <i class="fas fa-cog"></i>
     <span>Pengaturan</span>
   </button>
+
 </nav>
 
-<div id="toast-container"></div>
+<!-- Menu Lainnya (slide-up) -->
+<div id="moreMenuOverlay" onclick="closeMoreMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000"></div>
+<div id="moreMenuSheet" style="display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--white);border-radius:20px 20px 0 0;padding:16px;z-index:1001;box-shadow:0 -4px 24px rgba(0,0,0,.15)">
+  <div style="width:36px;height:4px;background:var(--gray-200);border-radius:2px;margin:0 auto 16px"></div>
+  <div style="font-size:12px;font-weight:600;color:var(--gray-400);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Menu</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+
+    <button onclick="closeMoreMenu();navigate('map')" id="bnav-map"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-map-marker-alt" style="font-size:18px;color:var(--green-600)"></i>Peta
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('visits')" id="bnav-visits"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-clipboard-list" style="font-size:18px;color:#3b82f6"></i>Kunjungan
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('crops')" id="bnav-crops"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-seedling" style="font-size:18px;color:#10b981"></i>Tanaman
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('production')" id="bnav-production"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-box" style="font-size:18px;color:#f59e0b"></i>Produksi
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('gallery')" id="bnav-gallery"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-images" style="font-size:18px;color:#8b5cf6"></i>Galeri
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('reports')" id="bnav-reports-more"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-file-alt" style="font-size:18px;color:#ef4444"></i>Laporan
+    </button>
+
+    <button onclick="closeMoreMenu();navigate('settings')" id="bnav-settings-more"
+      style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--gray-100);border-radius:12px;background:var(--gray-50);cursor:pointer;font-size:11px;font-weight:500;color:var(--gray-700)">
+      <i class="fas fa-cog" style="font-size:18px;color:var(--gray-500)"></i>Pengaturan
+    </button>
+
+  </div>
+</div>
+
+<div id="toast-container" style="position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:320px"></div>
 
 <!-- ===== FAB (Floating Action Button) ===== -->
 <div class="fab-overlay" id="fabOverlay" onclick="closeFab()"></div>
