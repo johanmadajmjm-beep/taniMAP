@@ -1201,7 +1201,8 @@ async function printKartu() {
     // Konversi canvas → Blob via fetch (non-blocking, tidak freeze)
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const imgBlob = await (await fetch(imgData)).blob();
-    const farmerName = kartu.querySelector('.kartu-nama')?.textContent || 'petani';
+    // Ambil nama dari elemen h2/div nama di kartu
+    const farmerName = kartu.querySelector('[style*="font-size:16px"]')?.textContent?.trim() || 'petani';
     const fname = 'kartu-' + farmerName.replace(/\s+/g, '-').toLowerCase() + '.jpg';
 
     await universalDownload(imgBlob, fname);
@@ -3037,6 +3038,39 @@ function handleBackButton() {
 
 // initBackButton dipanggil dari DOMContentLoaded utama
 
+
+// ============================================================
+//  MODAL PREVIEW DOWNLOAD
+// ============================================================
+
+let _pendingDownloadBlob = null;
+let _pendingDownloadFilename = null;
+
+/**
+ * Tampilkan modal preview sebelum download
+ */
+function showDownloadPreview(blob, filename, title, format, info) {
+  _pendingDownloadBlob     = blob;
+  _pendingDownloadFilename = filename;
+  document.getElementById('dlPreviewTitle').textContent    = title || 'Preview Sebelum Download';
+  document.getElementById('dlPreviewFilename').textContent = filename;
+  document.getElementById('dlPreviewFormat').textContent   = format || '-';
+  document.getElementById('dlPreviewInfo').textContent     = info || '-';
+  document.getElementById('dlPreviewContent').innerHTML    = '';
+  openModal('modalDownloadPreview');
+}
+
+/**
+ * Eksekusi download dari modal preview
+ */
+async function executePendingDownload() {
+  if (!_pendingDownloadBlob || !_pendingDownloadFilename) return;
+  closeModal('modalDownloadPreview');
+  await universalDownload(_pendingDownloadBlob, _pendingDownloadFilename);
+  _pendingDownloadBlob     = null;
+  _pendingDownloadFilename = null;
+}
+
 // ============================================================
 // GALERI FOTO
 // ============================================================
@@ -3215,3 +3249,120 @@ async function gallerySendSelected() {
     showToast(`${gagal} foto gagal dikirim`, 'error');
   }
 }
+
+// ============================================================
+//  GOOGLE DRIVE BACKUP & RESTORE (Settings)
+// ============================================================
+
+const GDRIVE_CLIENT_ID = '302226546386-r864vopnd4c0s5d30hbj4hcpvoqij3j3.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let gdriveToken = null;
+
+function gdriveAuth(callback) {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: (response) => {
+      if (response.error) {
+        showToast('Gagal login Google Drive: ' + response.error, 'error');
+        return;
+      }
+      gdriveToken = response.access_token;
+      callback(gdriveToken);
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+function backupToDrive() {
+  const statusEl = document.getElementById('driveStatusBackup');
+  if (statusEl) statusEl.textContent = 'Menghubungkan ke Google...';
+
+  gdriveAuth(async (token) => {
+    try {
+      if (statusEl) statusEl.textContent = 'Mengunggah data...';
+      const allData = {
+        version: '1.0',
+        tanggal: new Date().toISOString(),
+        farmers: JSON.parse(localStorage.getItem('tanimap_farmers') || '[]'),
+      };
+      const filename = `tanimap-backup-${new Date().toISOString().slice(0,10)}.json`;
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const metadata = { name: filename, mimeType: 'application/json' };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) throw new Error('Upload gagal: ' + res.status);
+      const waktu = new Date().toLocaleString('id-ID');
+      if (statusEl) statusEl.textContent = `✅ Terakhir backup: ${waktu}`;
+      localStorage.setItem('tanimap_lastBackup', waktu);
+      showToast(`Backup berhasil! File: ${filename}`, 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ Backup gagal';
+      showToast('Backup gagal: ' + err.message, 'error');
+    }
+  });
+}
+
+function restoreFromDrive() {
+  const statusEl = document.getElementById('driveStatusRestore');
+  if (statusEl) statusEl.textContent = 'Menghubungkan ke Google...';
+
+  gdriveAuth(async (token) => {
+    try {
+      if (statusEl) statusEl.textContent = 'Mencari file backup...';
+      const res = await fetch(
+        "https://www.googleapis.com/drive/v3/files?q=name+contains+'tanimap-backup'+and+mimeType='application/json'&orderBy=createdTime+desc&fields=files(id,name,createdTime)&pageSize=10",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error('Gagal mengambil daftar file');
+      const data = await res.json();
+      const files = data.files || [];
+      if (files.length === 0) {
+        if (statusEl) statusEl.textContent = 'Tidak ada file backup ditemukan';
+        showToast('Tidak ada file backup TaniMap di Google Drive', 'error');
+        return;
+      }
+      const fileList = files.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+      const choice = prompt(`Pilih nomor file backup:\n\n${fileList}\n\n(Ketik angka 1-${files.length})`);
+      const idx = parseInt(choice) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= files.length) {
+        if (statusEl) statusEl.textContent = 'Restore dibatalkan';
+        return;
+      }
+      const selectedFile = files[idx];
+      if (statusEl) statusEl.textContent = `Memuat ${selectedFile.name}...`;
+      const dlRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${selectedFile.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!dlRes.ok) throw new Error('Gagal mengunduh file');
+      const json = await dlRes.json();
+      if (!json.farmers || !Array.isArray(json.farmers)) throw new Error('Format file backup tidak valid');
+      const ok = confirm(`Restore ${json.farmers.length} data petani dari "${selectedFile.name}"?\n\nData yang ada sekarang akan ditimpa.`);
+      if (!ok) { if (statusEl) statusEl.textContent = 'Restore dibatalkan'; return; }
+      localStorage.setItem('tanimap_farmers', JSON.stringify(json.farmers));
+      farmers = json.farmers;
+      refreshAll();
+      const waktu = new Date().toLocaleString('id-ID');
+      if (statusEl) statusEl.textContent = `✅ Restore berhasil: ${waktu}`;
+      showToast(`Berhasil memuat ${json.farmers.length} data petani dari Drive!`, 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ Restore gagal';
+      showToast('Restore gagal: ' + err.message, 'error');
+    }
+  });
+}
+
+(function initDriveStatus() {
+  const lastBackup = localStorage.getItem('tanimap_lastBackup');
+  if (lastBackup) {
+    const el = document.getElementById('driveStatusBackup');
+    if (el) el.textContent = `✅ Terakhir backup: ${lastBackup}`;
+  }
+})();
