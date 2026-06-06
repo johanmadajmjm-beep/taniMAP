@@ -783,6 +783,11 @@
           <label class="form-label">Rekomendasi Tindak Lanjut</label>
           <textarea class="form-control" id="vRekomendasi" rows="2"></textarea>
         </div>
+        <div class="form-group">
+          <button type="button" class="btn btn-outline btn-sm" onclick="getGPSForVisit()" style="margin-bottom:8px">
+            <i class="fas fa-map-marker-alt"></i> Ambil Titik Lokasi
+          </button>
+        </div>
         <div class="form-row cols-2">
           <div class="form-group">
             <label class="form-label">Latitude</label>
@@ -796,6 +801,17 @@
         <div class="form-group">
           <label class="form-label">Catatan Lapangan</label>
           <textarea class="form-control" id="vCatatan" rows="2"></textarea>
+        </div>
+
+        <!-- HAMA & PENYAKIT -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-200)">
+          <div style="font-weight:600;font-size:13px;color:var(--gray-700);margin-bottom:10px">
+            <i class="fas fa-bug" style="color:#f59e0b"></i> Hama & Penyakit (opsional)
+          </div>
+          <div id="visitHamaList"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addVisitHamaRow()" style="margin-top:6px">
+            <i class="fas fa-plus"></i> Tambah Hama/Penyakit
+          </button>
         </div>
       </form>
     </div>
