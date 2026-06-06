@@ -808,5 +808,50 @@
   </div>
 </div>
 
+<!-- MODAL PREVIEW DOWNLOAD -->
+<div class="modal-overlay" id="modalDownloadPreview">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="dlPreviewTitle">Preview Sebelum Download</div>
+      <button class="modal-close" onclick="closeModal('modalDownloadPreview')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:20px">
+
+      <!-- Preview kartu/file -->
+      <div id="dlPreviewContent" style="margin-bottom:16px"></div>
+
+      <!-- Info file -->
+      <div style="background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--r-sm);padding:12px;margin-bottom:16px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Nama File</div>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-900)" id="dlPreviewFilename">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Format</div>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-900)" id="dlPreviewFormat">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Konten</div>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-900)" id="dlPreviewInfo">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--blue-50);border:1px solid var(--blue-100);border-radius:var(--r-sm);padding:10px;font-size:12px;color:var(--blue-600)">
+        <i class="fas fa-info-circle"></i> File akan disimpan ke folder <b>Download</b> di perangkat kamu.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalDownloadPreview')">
+        <i class="fas fa-times"></i> Batal
+      </button>
+      <button class="btn btn-primary" id="dlPreviewBtn" onclick="executePendingDownload()">
+        <i class="fas fa-download"></i> Download Sekarang
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
