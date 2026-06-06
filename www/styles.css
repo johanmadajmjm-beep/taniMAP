@@ -274,16 +274,16 @@ a { color: var(--green-600); text-decoration: none; }
   display: block;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 22px;
   color: var(--gray-900);
-  letter-spacing: -0.2px;
+  letter-spacing: -0.4px;
 }
 .header-title small {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--gray-400);
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 
@@ -363,7 +363,7 @@ a { color: var(--green-600); text-decoration: none; }
 /* ============================================
    PAGE CONTENT
    ============================================ */
-.page-content { padding: 20px 24px; flex: 1; }
+.page-content { padding: 20px 24px 80px; flex: 1; }
 .page { display: none; animation: pageIn 0.28s var(--ease) both; }
 .page.active { display: block; }
 @keyframes pageIn {
@@ -429,7 +429,7 @@ a { color: var(--green-600); text-decoration: none; }
   padding: 18px 20px 0;
   display: flex; align-items: center; justify-content: space-between;
 }
-.card-title { font-weight: 700; font-size: 14.5px; color: var(--gray-900); }
+.card-title { font-weight: 700; font-size: 16px; color: var(--gray-900); font-family: var(--font-display); }
 .card-body { padding: 16px 20px 20px; }
 
 /* ============================================
@@ -441,8 +441,8 @@ a { color: var(--green-600); text-decoration: none; }
   gap: 14px;
   margin-bottom: 16px;
 }
-.stats-grid-primary { grid-template-columns: repeat(3, 1fr); }
-.stats-grid-secondary { grid-template-columns: repeat(3, 1fr); margin-bottom: 20px; }
+.stats-grid-primary { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.stats-grid-secondary { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 20px; }
 
 .stat-card {
   background: var(--white);
@@ -482,7 +482,7 @@ a { color: var(--green-600); text-decoration: none; }
 
 .stat-value {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--gray-900);
   line-height: 1;
@@ -528,10 +528,12 @@ a { color: var(--green-600); text-decoration: none; }
 .chart-card-full { margin-bottom: 16px; }
 .chart-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--gray-900);
   margin-bottom: 14px;
   display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-display);
+  letter-spacing: -0.2px;
 }
 .chart-badge {
   font-size: 11px; font-weight: 500;
@@ -539,7 +541,7 @@ a { color: var(--green-600); text-decoration: none; }
   background: var(--gray-100);
   padding: 3px 8px; border-radius: var(--r-full);
 }
-.chart-canvas-wrap { position: relative; height: 220px; }
+.chart-canvas-wrap { position: relative; height: 200px; min-height: 160px; }
 .mb-2 { margin-bottom: 16px; }
 
 /* ============================================
@@ -547,7 +549,7 @@ a { color: var(--green-600); text-decoration: none; }
    ============================================ */
 .dashboard-bottom {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 16px;
   margin-top: 16px;
 }
