@@ -93,10 +93,7 @@
           <i class="fas fa-search"></i>
           <input type="text" placeholder="Cari data..." id="globalSearch" />
         </div>
-        <button class="header-icon-btn" title="Notifikasi">
-          <i class="fas fa-bell"></i>
-          <span class="header-notif-dot"></span>
-        </button>
+
         <button class="btn btn-primary btn-sm" id="headerActionBtn" onclick="openAddFarmerModal()" style="display:none">
           <i class="fas fa-plus"></i> Tambah Petani
         </button>
@@ -202,17 +199,43 @@
             <i class="fas fa-file-pdf"></i> Download PDF
           </button>
         </div>
-        <div class="map-container" style="position:relative">
-          <div id="map"></div>
-          <div class="map-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#1b5e20"></div> Kopi</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#f57f17"></div> Jagung</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div> Padi</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#6d4c41"></div> Kakao</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div> Cabai</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#ff7043"></div> Cengkeh</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div> Vanili</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#1565c0"></div> Lainnya</div>
+
+        <!-- Layout peta + panel info -->
+        <div class="map-layout">
+          <!-- Peta utama (tanpa legenda di dalam) -->
+          <div class="map-container">
+            <div id="map"></div>
+          </div>
+
+          <!-- Panel info di samping peta -->
+          <div class="map-info-panel">
+            <!-- Legenda komoditas -->
+            <div class="map-panel-card">
+              <div class="map-panel-title"><i class="fas fa-circle-dot"></i> Legenda Komoditas</div>
+              <div class="map-legend-list">
+                <div class="legend-item"><div class="legend-dot" style="background:#1b5e20"></div> Kopi Arabika</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#2e7d32"></div> Kopi Robusta</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f57f17"></div> Jagung</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div> Padi</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6d4c41"></div> Kakao</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div> Cabai</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ff7043"></div> Cengkeh</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div> Vanili</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#1565c0"></div> Lainnya</div>
+              </div>
+            </div>
+
+            <!-- Statistik peta -->
+            <div class="map-panel-card">
+              <div class="map-panel-title"><i class="fas fa-chart-bar"></i> Statistik</div>
+              <div id="mapStats" class="map-stats-list"></div>
+            </div>
+
+            <!-- Petani terdekat / terbaru -->
+            <div class="map-panel-card">
+              <div class="map-panel-title"><i class="fas fa-users"></i> Petani di Peta</div>
+              <div id="mapFarmerList" class="map-farmer-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -426,7 +449,7 @@
 
         <!-- SECTION: Data -->
         <div class="settings-section-label" style="margin-top:24px"><i class="fas fa-database"></i> Data</div>
-        <div class="settings-grid">
+        <div class="settings-grid settings-grid-2col">
 
           <div class="settings-card">
             <div class="settings-card-header">
@@ -449,7 +472,10 @@
                 <div class="settings-card-desc">TaniMap v1.0 — Sistem Informasi Petani Berbasis Lokasi.</div>
               </div>
             </div>
-            <span class="badge badge-green"><i class="fas fa-check-circle"></i> Offline Ready</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span class="badge badge-green"><i class="fas fa-check-circle"></i> Offline Ready</span>
+              <span class="badge badge-blue"><i class="fas fa-mobile-alt"></i> Android & Web</span>
+            </div>
           </div>
 
         </div>
