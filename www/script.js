@@ -165,6 +165,62 @@ function closeSidebar() {
 function renderDashboard() {
   renderStats();
   renderCharts();
+  renderDashboardExtra();
+}
+
+function renderDashboardExtra() {
+  // Horizontal bar produksi per komoditas
+  const prodMap = {};
+  farmers.forEach(f => (f.produksi||[]).forEach(p => {
+    prodMap[p.komoditas] = (prodMap[p.komoditas]||0) + (parseFloat(p.jumlah)||0);
+  }));
+  const sorted = Object.entries(prodMap).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const maxVal = sorted.length ? sorted[0][1] : 1;
+  const hbarEl = document.getElementById('produksiHBar');
+  if (hbarEl) {
+    if (!sorted.length) {
+      hbarEl.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">Belum ada data produksi</div>';
+    } else {
+      hbarEl.innerHTML = sorted.map(([nama, val]) => `
+        <div class="hbar-item">
+          <div class="hbar-label">
+            <span class="hbar-name">${nama}</span>
+            <span class="hbar-val">${val.toLocaleString('id-ID')} Kg</span>
+          </div>
+          <div class="hbar-track">
+            <div class="hbar-fill" style="width:${(val/maxVal*100).toFixed(1)}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Kunjungan terbaru
+  const allVisits = [];
+  farmers.forEach(f => (f.kunjungan||[]).forEach(k => allVisits.push({...k, farmerName: f.nama, farmerDesa: f.desa, komoditas: f.komoditas})));
+  allVisits.sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+  const recent = allVisits.slice(0, 5);
+  const visitEl = document.getElementById('recentVisitsList');
+  if (visitEl) {
+    if (!recent.length) {
+      visitEl.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">Belum ada kunjungan</div>';
+    } else {
+      visitEl.innerHTML = recent.map(k => {
+        const initials = k.farmerName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+        const colors = ['#22c55e','#0d9488','#f59e0b','#3b82f6','#8b5cf6'];
+        const color = colors[k.farmerName.length % colors.length];
+        return `
+          <div class="recent-item">
+            <div class="recent-avatar" style="background:linear-gradient(135deg,${color},${color}99)">${initials}</div>
+            <div class="recent-info">
+              <div class="recent-name">${k.farmerName}</div>
+              <div class="recent-sub">${k.farmerDesa}${k.farmerDesa && k.komoditas ? ', ' : ''}${commodityBadge(k.komoditas)}</div>
+            </div>
+            <div class="recent-date">${k.tanggal}</div>
+          </div>`;
+      }).join('');
+    }
+  }
 }
 
 function renderStats() {
@@ -177,25 +233,23 @@ function renderStats() {
 
   function cardHTML(s) {
     return `
-      <div class="stat-card">
+      <div class="stat-card ${s.color}">
         <div class="stat-icon ${s.color}">${s.icon}</div>
         <div class="stat-value">${s.value}</div>
         <div class="stat-label">${s.label}</div>
+        ${s.growth ? `<div class="stat-growth"><i class="fas fa-arrow-up" style="font-size:10px"></i> ${s.growth}</div>` : ''}
       </div>`;
   }
 
-  // Baris 1: data utama
   const primary = [
-    { icon: '👨‍🌾', label: 'Total Petani',     value: totalFarmers,              color: 'green'  },
-    { icon: '🗺️',  label: 'Total Lahan (Ha)',  value: totalLahan.toFixed(2),     color: 'blue'   },
-    { icon: '📋',  label: 'Total Kunjungan',   value: totalVisits,               color: 'brown'  },
+    { icon: '👨‍🌾', label: 'Total Petani',    value: totalFarmers,           color: 'green', growth: 'Data aktif' },
+    { icon: '🗺️',  label: 'Total Lahan (Ha)', value: totalLahan.toFixed(2),  color: 'teal',  growth: 'Terverifikasi' },
+    { icon: '📋',  label: 'Total Kunjungan',  value: totalVisits,            color: 'blue',  growth: 'Tercatat' },
   ];
-
-  // Baris 2: data pendukung
   const secondary = [
-    { icon: '🌾',  label: 'Total Komoditas',   value: komoditasSet.size,         color: 'orange' },
-    { icon: '🌱',  label: 'Total Tanaman',      value: totalTanaman,              color: 'green'  },
-    { icon: '📦',  label: 'Total Produksi',     value: totalProd.toFixed(0) + ' Kg/Ton', color: 'orange' },
+    { icon: '🌾',  label: 'Total Komoditas',  value: komoditasSet.size,      color: 'amber' },
+    { icon: '🌱',  label: 'Total Tanaman',     value: totalTanaman,           color: 'green' },
+    { icon: '📦',  label: 'Total Produksi',    value: totalProd.toFixed(0) + ' Kg', color: 'amber' },
   ];
 
   document.getElementById('statsGridPrimary').innerHTML   = primary.map(cardHTML).join('');
@@ -216,25 +270,38 @@ function renderCharts() {
     data: {
       labels: Object.keys(villageCount),
       datasets: [{ label: 'Petani', data: Object.values(villageCount),
-        backgroundColor: '#4caf50', borderRadius: 6 }]
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+          g.addColorStop(0, '#4ade80'); g.addColorStop(1, '#16a34a');
+          return g;
+        },
+        borderRadius: 8, borderSkipped: false }]
     },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} petani` } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+      }
+    }
   });
 
   // Chart: Komoditas
   const commCount = {};
   farmers.forEach(f => { commCount[f.komoditas] = (commCount[f.komoditas] || 0) + 1; });
-  const colors = ['#1b5e20','#f57f17','#66bb6a','#6d4c41','#e53935','#ff7043','#8e24aa','#1565c0','#37474f'];
+  const colors = ['#22c55e','#f59e0b','#14b8a6','#6d4c41','#ef4444','#f97316','#8b5cf6','#3b82f6','#6b7280'];
   charts['chartCommodity'] = new Chart(document.getElementById('chartCommodity'), {
     type: 'doughnut',
     data: {
       labels: Object.keys(commCount),
-      datasets: [{ data: Object.values(commCount), backgroundColor: colors }]
+      datasets: [{ data: Object.values(commCount), backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverBorderWidth: 3 }]
     },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } } }
+    }
   });
 
   // Chart: Produksi per Komoditas
@@ -246,12 +313,22 @@ function renderCharts() {
     type: 'bar',
     data: {
       labels: Object.keys(prodMap),
-      datasets: [{ label: 'Produksi', data: Object.values(prodMap),
-        backgroundColor: '#f57c00', borderRadius: 6 }]
+      datasets: [{ label: 'Produksi (Kg)', data: Object.values(prodMap),
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+          g.addColorStop(0, '#fbbf24'); g.addColorStop(1, '#d97706');
+          return g;
+        },
+        borderRadius: 8, borderSkipped: false }]
     },
-    options: { responsive: true, maintainAspectRatio: false,
+    options: {
+      responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } } }
+      scales: {
+        y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+      }
+    }
   });
 }
 
