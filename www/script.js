@@ -453,18 +453,18 @@ function farmerCardHTML(f) {
         </div>
         ${commodityBadge(f.komoditas)}
       </div>
-      <div class="farmer-card-footer">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="openDetail('${f.id}')">
-          <i class="fas fa-eye"></i> Detail
+      <div class="farmer-card-footer" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
+        <button class="btn-card-action" title="Detail" onclick="openDetail('${f.id}')">
+          <i class="fas fa-eye"></i><span style="font-size:10px;display:block;margin-top:2px">Detail</span>
         </button>
         <button class="btn-card-action" title="Kartu Petani" onclick="event.stopPropagation();cetakKartu('${f.id}')">
-          <i class="fas fa-id-card"></i>
+          <i class="fas fa-id-card"></i><span style="font-size:10px;display:block;margin-top:2px">Kartu</span>
         </button>
         <button class="btn-card-action" title="Edit" onclick="event.stopPropagation();openEditFarmer('${f.id}')">
-          <i class="fas fa-pen"></i>
+          <i class="fas fa-pen"></i><span style="font-size:10px;display:block;margin-top:2px">Edit</span>
         </button>
         <button class="btn-card-action danger" title="Hapus" onclick="event.stopPropagation();confirmDeleteFarmer('${f.id}')">
-          <i class="fas fa-trash"></i>
+          <i class="fas fa-trash"></i><span style="font-size:10px;display:block;margin-top:2px">Hapus</span>
         </button>
       </div>
     </div>
@@ -2190,33 +2190,15 @@ let _excelBlob = null; // simpan blob untuk unduh nanti
 async function bukaPreviewExcel() {
   const XLSXlib = window.XLSX;
   if (!XLSXlib) { showToast('Library Excel belum termuat', 'error'); return; }
-
-  const content = document.getElementById('excelPreviewContent');
-  content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400)"><i class="fas fa-spinner fa-spin"></i> Menyiapkan data...</div>';
-  openModal('modalPreviewExcel');
-
-  // Buat workbook
-  const wb = _buildExcelWorkbook(XLSXlib);
-
-  // Simpan blob untuk tombol Unduh
-  const wbout = XLSXlib.write(wb, { bookType: 'xlsx', type: 'array' });
-  _excelBlob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-  // Render sheet pertama (Data Petani) sebagai tabel HTML
-  const ws = wb.Sheets['Data Petani'];
-  const html = XLSXlib.utils.sheet_to_html(ws, { editable: false });
-  content.innerHTML = `
-    <div style="font-size:11px;color:var(--gray-400);margin-bottom:8px">Menampilkan sheet: <strong>Data Petani</strong> (${farmers.length} baris)</div>
-    <div style="overflow-x:auto;border:1px solid var(--gray-200);border-radius:6px">
-      <style>#excelPreviewContent table{border-collapse:collapse;width:100%;font-size:12px}
-      #excelPreviewContent td,#excelPreviewContent th{border:1px solid var(--gray-200);padding:6px 10px;white-space:nowrap}
-      #excelPreviewContent tr:first-child td{background:var(--green-50);font-weight:700;color:var(--green-700)}</style>
-      ${html}
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--gray-400)">
-      <i class="fas fa-info-circle"></i> File Excel lengkap berisi 6 sheet: Petani, Lahan, Tanaman, Kunjungan, Produksi, Hama & Penyakit.
-    </div>
-  `;
+  showToast('Menyiapkan file Excel...', 'info');
+  try {
+    const wb   = _buildExcelWorkbook(XLSXlib);
+    const wbout = XLSXlib.write(wb, { bookType: 'xlsx', type: 'array' });
+    _excelBlob  = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    await unduhExcel();
+  } catch(e) {
+    showToast('Gagal membuat Excel: ' + e.message, 'error');
+  }
 }
 
 async function unduhExcel() {
@@ -2236,45 +2218,59 @@ async function bukaPreviewPDF() {
   const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
   if (!jsPDFLib) { showToast('Library PDF belum termuat', 'error'); return; }
 
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+
+  // GitHub Pages / browser: langsung unduh tanpa popup
+  if (!isNative) {
+    showToast('Menyiapkan PDF...', 'info');
+    try {
+      _pdfBlob = await _buildPDFBlob(jsPDFLib);
+      const tgl = new Date().toLocaleDateString('id-ID').replace(/\/g,'-');
+      await universalDownload(_pdfBlob, `TaniMap_Laporan_${tgl}.pdf`);
+      showToast('PDF berhasil diunduh', 'success');
+    } catch(e) {
+      showToast('Gagal membuat PDF: ' + e.message, 'error');
+    }
+    return;
+  }
+
+  // HP Android: tampilkan popup dengan render PDF via pdf.js
   const content  = document.getElementById('pdfPreviewContent');
   const unduhBtn = document.getElementById('btnUnduhPDF');
-  content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400)"><i class="fas fa-spinner fa-spin"></i> Membuat PDF...</div>';
+  content.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400)"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i><div style="margin-top:10px">Membuat PDF...</div></div>';
   if (unduhBtn) unduhBtn.disabled = true;
   openModal('modalPreviewPDF');
 
   try {
-    // Generate PDF blob
     _pdfBlob = await _buildPDFBlob(jsPDFLib);
+    // HP Android: render PDF sebagai canvas via pdf.js
+    const arrayBuffer = await _pdfBlob.arrayBuffer();
+    const uint8       = new Uint8Array(arrayBuffer);
 
-    // Tampilkan ringkasan isi PDF sebagai preview
-    const totalLahan = farmers.reduce((s,f) => s + (f.lahan||[]).reduce((a,l) => a+(parseFloat(l.luas)||0),0), 0);
-    const totalProd  = farmers.reduce((s,f) => s + (f.produksi||[]).reduce((a,p) => a+(parseFloat(p.total)||0),0), 0);
-    const byVillage  = {};
-    farmers.forEach(f => { byVillage[f.desa] = (byVillage[f.desa]||0)+1; });
-    const byComm = {};
-    farmers.forEach(f => { byComm[f.komoditas] = (byComm[f.komoditas]||0)+1; });
+    if (typeof pdfjsLib === 'undefined') {
+      // pdf.js belum load — tampilkan ringkasan saja
+      content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400)">PDF siap. Tekan Unduh untuk menyimpan.</div>';
+    } else {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+      const pdfDoc      = await loadingTask.promise;
+      const totalPages  = pdfDoc.numPages;
 
-    content.innerHTML = `
-      <div style="background:var(--green-50);border:1px solid var(--green-200);border-radius:8px;padding:14px;margin-bottom:14px">
-        <div style="font-weight:700;color:var(--green-700);margin-bottom:8px"><i class="fas fa-file-pdf"></i> Isi Laporan PDF</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-          <div>📊 Total Petani: <strong>${farmers.length}</strong></div>
-          <div>🗺️ Total Lahan: <strong>${totalLahan.toFixed(2)} Ha</strong></div>
-          <div>💰 Total Pendapatan: <strong>Rp ${Number(totalProd).toLocaleString('id-ID')}</strong></div>
-          <div>🌾 Komoditas: <strong>${Object.keys(byComm).length} jenis</strong></div>
-        </div>
-      </div>
-      <div style="font-size:13px;margin-bottom:8px;font-weight:600">Rekap per Desa:</div>
-      <div style="border:1px solid var(--gray-200);border-radius:6px;overflow:hidden;margin-bottom:12px">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <tr style="background:var(--gray-50)"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--gray-200)">Desa</th><th style="padding:8px;text-align:right;border-bottom:1px solid var(--gray-200)">Petani</th></tr>
-          ${Object.entries(byVillage).map(([d,n]) => `<tr><td style="padding:7px 8px;border-bottom:1px solid var(--gray-100)">${d}</td><td style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--gray-100)">${n}</td></tr>`).join('')}
-        </table>
-      </div>
-      <div style="font-size:11px;color:var(--gray-400)">
-        <i class="fas fa-info-circle"></i> PDF berisi: rekap per desa, rekap komoditas, rekap produksi, rekap hama, dan daftar lengkap petani.
-      </div>
-    `;
+      // Buat container scroll vertikal berisi semua halaman
+      content.innerHTML = `<div id="pdfCanvasContainer" style="overflow-y:auto;height:65vh;background:#555;padding:8px;display:flex;flex-direction:column;gap:8px;align-items:center"></div>`;
+      const container = document.getElementById('pdfCanvasContainer');
+
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        const page     = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.2 });
+        const canvas   = document.createElement('canvas');
+        canvas.width   = viewport.width;
+        canvas.height  = viewport.height;
+        canvas.style.cssText = 'max-width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+        container.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      }
+    }
     if (unduhBtn) unduhBtn.disabled = false;
   } catch (err) {
     content.innerHTML = `<div style="color:var(--red-500);padding:16px"><i class="fas fa-exclamation-circle"></i> Gagal membuat PDF: ${err.message}</div>`;
@@ -2287,11 +2283,13 @@ async function unduhPDF() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunduh...'; }
   try {
     const tgl = new Date().toLocaleDateString('id-ID').replace(/\//g,'-');
-    await universalDownload(_pdfBlob, `TaniMap_Laporan_${tgl}.pdf`);
-    showToast('PDF berhasil diunduh', 'success');
-    closeModal('modalPreviewPDF');
+    const ok  = await universalDownload(_pdfBlob, `TaniMap_Laporan_${tgl}.pdf`);
+    if (ok) {
+      showToast('PDF berhasil dikirim ke aplikasi berbagi', 'success');
+      closeModal('modalPreviewPDF');
+    }
   } catch(err) {
-    showToast('Gagal mengunduh PDF', 'error');
+    showToast('Tidak bisa unduh otomatis. Coba screenshot halaman ini.', 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Unduh PDF'; }
   }
@@ -3247,17 +3245,23 @@ function renderGallery() {
   const badgeLabel = { petani: 'Petani', lahan: 'Lahan', tanaman: 'Tanaman' };
 
   grid.innerHTML = photos.map(p => `
-    <div class="gallery-card" id="gcard_${p.id}" style="position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--gray-100);border:2.5px solid transparent;transition:border-color .2s">
-      <img src="${p.base64}" style="width:100%;height:130px;object-fit:cover;display:block;cursor:zoom-in" loading="lazy"
-        onclick="bukaGaleriPreview('${p.id}')" />
-      <div style="padding:6px 8px 4px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="galleryToggleSelect('${p.id}')">
+    <div class="gallery-card" id="gcard_${p.id}"
+      style="position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--gray-100);border:2.5px solid transparent;transition:border-color .2s;cursor:pointer;user-select:none"
+      onclick="galleryHandleClick('${p.id}')"
+      ontouchstart="galleryTouchStart('${p.id}', event)"
+      ontouchend="galleryTouchEnd('${p.id}', event)"
+      ontouchmove="galleryTouchMove(event)"
+      onmousedown="galleryMouseDown('${p.id}')"
+      onmouseup="galleryMouseUp('${p.id}')"
+      onmouseleave="galleryMouseLeave('${p.id}')">
+      <img src="${p.base64}" style="width:100%;height:130px;object-fit:cover;display:block;pointer-events:none" loading="lazy" />
+      <div style="padding:6px 8px 4px;display:flex;justify-content:space-between;align-items:center;pointer-events:none">
         <span style="font-size:11px;font-weight:600;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${p.farmerName}</span>
-        ${p.sentToDrive ? `<span title="Sudah terkirim ke Drive" style="color:#34a853;font-size:13px;flex-shrink:0"><i class="fas fa-cloud-upload-alt"></i></span>` : `<span style="color:var(--gray-300);font-size:13px;flex-shrink:0"><i class="fas fa-cloud"></i></span>`}
+        ${p.sentToDrive ? `<span style="color:#34a853;font-size:13px;flex-shrink:0"><i class="fas fa-cloud-upload-alt"></i></span>` : `<span style="color:var(--gray-300);font-size:13px;flex-shrink:0"><i class="fas fa-cloud"></i></span>`}
       </div>
-      <div style="padding:0 8px 6px;cursor:pointer" onclick="galleryToggleSelect('${p.id}')">
+      <div style="padding:0 8px 6px;pointer-events:none">
         <span style="font-size:10px;font-weight:700;color:${badgeColor[p.type]};text-transform:uppercase">${badgeLabel[p.type]}</span>
       </div>
-      <!-- Checkbox overlay -->
       <div id="gcheck_${p.id}" style="display:none;position:absolute;top:6px;right:6px;width:22px;height:22px;background:var(--green-600);border-radius:50%;align-items:center;justify-content:center;pointer-events:none">
         <i class="fas fa-check" style="color:white;font-size:11px"></i>
       </div>
@@ -3271,6 +3275,74 @@ let gallerySelected = new Set();
 /**
  * Buka popup preview foto galeri
  */
+
+// ============================================================
+//  GALLERY — LONG PRESS SELECT, TAP PREVIEW
+// ============================================================
+
+let _galleryLongPressTimer = null;
+let _galleryLongPressTriggered = false;
+let _galleryTouchMoved = false;
+const LONG_PRESS_MS = 500;
+
+function galleryTouchStart(id, e) {
+  _galleryTouchMoved = false;
+  _galleryLongPressTriggered = false;
+  _galleryLongPressTimer = setTimeout(() => {
+    _galleryLongPressTriggered = true;
+    galleryToggleSelect(id);
+    // Vibrasi singkat kalau HP support
+    if (navigator.vibrate) navigator.vibrate(40);
+  }, LONG_PRESS_MS);
+}
+
+function galleryTouchMove(e) {
+  _galleryTouchMoved = true;
+  clearTimeout(_galleryLongPressTimer);
+}
+
+function galleryTouchEnd(id, e) {
+  clearTimeout(_galleryLongPressTimer);
+  if (_galleryLongPressTriggered || _galleryTouchMoved) {
+    e.preventDefault();
+    return;
+  }
+  // Tap biasa: preview atau select (tergantung mode)
+  if (gallerySelected.size > 0) {
+    galleryToggleSelect(id);
+  } else {
+    bukaGaleriPreview(id);
+  }
+}
+
+let _galleryMouseTimer = null;
+let _galleryMouseLong = false;
+
+function galleryMouseDown(id) {
+  _galleryMouseLong = false;
+  _galleryMouseTimer = setTimeout(() => {
+    _galleryMouseLong = true;
+    galleryToggleSelect(id);
+  }, LONG_PRESS_MS);
+}
+
+function galleryMouseUp(id) {
+  clearTimeout(_galleryMouseTimer);
+}
+
+function galleryMouseLeave(id) {
+  clearTimeout(_galleryMouseTimer);
+}
+
+function galleryHandleClick(id) {
+  if (_galleryMouseLong) { _galleryMouseLong = false; return; }
+  if (gallerySelected.size > 0) {
+    galleryToggleSelect(id);
+  } else {
+    bukaGaleriPreview(id);
+  }
+}
+
 function bukaGaleriPreview(photoId) {
   const photos = collectAllPhotos();
   const p = photos.find(x => x.id === photoId);
