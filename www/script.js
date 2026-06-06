@@ -1,3 +1,13 @@
+// ============================================================
+//  SPLASH SCREEN
+// ============================================================
+function mulaiApp() {
+  const splash = document.getElementById('splashScreen');
+  if (!splash) return;
+  splash.classList.add('hide');
+  setTimeout(() => { splash.style.display = 'none'; }, 500);
+}
+
 /**
  * TaniMap — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani
  * script.js — Main Application Logic
