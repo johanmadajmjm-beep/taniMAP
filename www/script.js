@@ -431,50 +431,37 @@ function renderFarmersGrid() {
 }
 
 function farmerCardHTML(f) {
-  const totalLahan = (f.lahan || []).reduce((s, l) => s + (parseFloat(l.luas) || 0), 0);
-  const initials   = f.nama.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+  const initials = f.nama.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
   const avatarHtml = f.foto
     ? `<div class="farmer-avatar"><img src="${f.foto}" alt="${f.nama}" /></div>`
-    : `<div class="farmer-avatar" style="background:var(--green-100);color:var(--green-700);font-size:13px;font-weight:700;font-family:var(--font-body)">${initials}</div>`;
+    : `<div class="farmer-avatar" style="background:var(--green-100);color:var(--green-700);font-size:13px;font-weight:700">${initials}</div>`;
 
   return `
     <div class="farmer-card">
       <div class="farmer-card-top">
         ${avatarHtml}
-        <div class="farmer-info">
+        <div class="farmer-info" style="flex:1;min-width:0">
           <div class="farmer-name">${f.nama}</div>
-          <div class="farmer-village"><i class="fas fa-map-marker-alt" style="font-size:10px;color:var(--green-400);margin-right:3px"></i>${f.desa}, ${f.kecamatan}</div>
+          <div class="farmer-village" style="margin-top:2px">
+            ${f.kelompokTani ? `<span style="color:var(--green-600);font-weight:600">${f.kelompokTani}</span> · ` : ''}
+            <i class="fas fa-map-marker-alt" style="font-size:9px;color:var(--gray-400)"></i> ${f.desa}
+          </div>
         </div>
         ${commodityBadge(f.komoditas)}
       </div>
-
-      <div class="farmer-card-body">
-        <div class="farmer-stat">
-          <div class="farmer-stat-val">${totalLahan.toFixed(2)} Ha</div>
-          <div class="farmer-stat-key">Lahan</div>
-        </div>
-        <div class="farmer-stat-divider"></div>
-        <div class="farmer-stat">
-          <div class="farmer-stat-val">${f.kelompokTani || '—'}</div>
-          <div class="farmer-stat-key">Kelompok</div>
-        </div>
-        ${f.lat && f.lng ? `
-        <div class="farmer-stat-divider"></div>
-        <div class="farmer-stat">
-          <div class="farmer-stat-val" style="font-size:11px;color:var(--gray-400)">${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}</div>
-          <div class="farmer-stat-key">GPS</div>
-        </div>` : ''}
-      </div>
-
       <div class="farmer-card-footer">
         <button class="btn btn-outline btn-sm" style="flex:1" onclick="openDetail('${f.id}')">
           <i class="fas fa-eye"></i> Detail
         </button>
-        <div class="farmer-card-actions">
-          <button class="btn-card-action" title="Cetak Kartu" onclick="event.stopPropagation();cetakKartu('${f.id}')"><i class="fas fa-id-card"></i></button>
-          <button class="btn-card-action" title="Edit" onclick="event.stopPropagation();openEditFarmer('${f.id}')"><i class="fas fa-pen"></i></button>
-          <button class="btn-card-action danger" title="Hapus" onclick="event.stopPropagation();confirmDeleteFarmer('${f.id}')"><i class="fas fa-trash"></i></button>
-        </div>
+        <button class="btn-card-action" title="Kartu Petani" onclick="event.stopPropagation();cetakKartu('${f.id}')">
+          <i class="fas fa-id-card"></i>
+        </button>
+        <button class="btn-card-action" title="Edit" onclick="event.stopPropagation();openEditFarmer('${f.id}')">
+          <i class="fas fa-pen"></i>
+        </button>
+        <button class="btn-card-action danger" title="Hapus" onclick="event.stopPropagation();confirmDeleteFarmer('${f.id}')">
+          <i class="fas fa-trash"></i>
+        </button>
       </div>
     </div>
   `;
@@ -1385,21 +1372,33 @@ function openDetail(id) {
     : `<div class="detail-avatar">👨‍🌾</div>`;
 
   const html = `
-    <div class="detail-header">
-      ${avatarHtml}
-      <div class="detail-info">
-        <div class="detail-name">${f.nama}</div>
-        <div class="detail-sub"><i class="fas fa-phone"></i> ${f.hp || '-'} &nbsp;|&nbsp; <i class="fas fa-venus-mars"></i> ${f.jenisKelamin}, ${f.umur} tahun</div>
-        <div class="detail-badges">
+    <!-- Profile: foto besar + info sejajar dalam 1 baris -->
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+      <div style="flex-shrink:0">
+        ${f.foto
+          ? `<div style="width:90px;height:90px;border-radius:var(--r-md);overflow:hidden;border:3px solid var(--green-100)"><img src="${f.foto}" style="width:100%;height:100%;object-fit:cover" /></div>`
+          : `<div style="width:90px;height:90px;border-radius:var(--r-md);background:linear-gradient(135deg,var(--green-300),var(--green-500));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff">${f.nama.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>`
+        }
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:6px">${f.nama}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--gray-500)"><i class="fas fa-phone" style="color:var(--green-400)"></i> ${f.hp || '-'}</span>
+          <span style="font-size:12px;color:var(--gray-500)"><i class="fas fa-venus-mars" style="color:var(--green-400)"></i> ${f.jenisKelamin || '-'}</span>
+          <span style="font-size:12px;color:var(--gray-500)"><i class="fas fa-birthday-cake" style="color:var(--green-400)"></i> ${f.umur || '-'} thn</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
           ${commodityBadge(f.komoditas)}
           <span class="badge badge-blue"><i class="fas fa-map-marker-alt"></i> ${f.desa}</span>
           <span class="badge badge-gray">${f.kelompokTani || 'Tanpa Kelompok'}</span>
         </div>
-        <div class="flex mt-2" style="gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="openEditFarmer('${f.id}');closeModal('modalDetail')"><i class="fas fa-edit"></i> Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="confirmDeleteFarmer('${f.id}');closeModal('modalDetail')"><i class="fas fa-trash"></i> Hapus</button>
-          <button class="btn btn-primary btn-sm" onclick="cetakKartu('${f.id}')"><i class="fas fa-id-card"></i> Cetak Kartu</button>
-          ${f.lat && f.lng ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" class="btn btn-secondary btn-sm"><i class="fas fa-map"></i> Google Maps</a>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="openEditFarmer('${f.id}');closeModal('modalDetail')">
+          <i class="fas fa-edit"></i> Edit Data
+        </button>
+      </div>
+    </div>
+    <div style="display:none">
+      ${f.lat && f.lng ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" class="btn btn-secondary btn-sm"><i class="fas fa-map"></i> Google Maps</a>` : ''}
         </div>
       </div>
     </div>
