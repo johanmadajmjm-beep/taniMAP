@@ -343,10 +343,10 @@
       <!-- ========== REPORTS ========== -->
       <div class="page" id="page-reports">
         <div class="report-actions">
-          <button class="btn btn-primary" onclick="exportExcel()">
+          <button class="btn btn-primary" onclick="bukaPreviewExcel()">
             <i class="fas fa-file-excel"></i> Export Excel
           </button>
-          <button class="btn btn-danger" onclick="exportPDF()">
+          <button class="btn btn-danger" onclick="bukaPreviewPDF()">
             <i class="fas fa-file-pdf"></i> Export PDF
           </button>
           <button class="btn btn-sheets" onclick="exportToGoogleSheets()">
@@ -412,15 +412,16 @@
           <button class="btn btn-secondary btn-sm" onclick="gallerySelectAll()">
             <i class="fas fa-check-double"></i> Pilih Semua
           </button>
+          <button class="btn btn-secondary btn-sm" onclick="galleryDeselectAll()">
+            <i class="fas fa-times"></i> Hapus Pilihan
+          </button>
           <button class="btn btn-primary btn-sm" onclick="gallerySendSelected()">
             <i class="fas fa-cloud-upload-alt"></i> Kirim ke Drive
           </button>
         </div>
 
         <!-- Status kirim -->
-        <div id="galleryUploadStatus" style="display:none;padding:10px 14px;border-radius:var(--r-sm);font-size:13px;margin-bottom:12px;background:var(--blue-50);color:var(--blue-600);border:1px solid var(--blue-100)">
-          <i class="fas fa-spinner fa-spin"></i> <span id="galleryUploadMsg">Mengirim...</span>
-        </div>
+        <div id="galleryUploadStatus" style="display:none;padding:10px 14px;border-radius:var(--r-sm);font-size:13px;margin-bottom:12px"></div>
 
         <!-- Grid foto -->
         <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
@@ -962,6 +963,57 @@
       </button>
       <button class="btn btn-primary" id="dlPreviewBtn" onclick="executePendingDownload()">
         <i class="fas fa-download"></i> Download Sekarang
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GALERI FOTO PREVIEW -->
+<div id="modalGaleriPreview" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:16px" onclick="tutupGaleriPreview(event)">
+  <div style="position:relative;max-width:92vw;max-height:92vh">
+    <button onclick="tutupGaleriPreview()" style="position:absolute;top:-14px;right:-14px;width:34px;height:34px;border-radius:50%;background:#fff;border:none;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.3)">✕</button>
+    <img id="galeriPreviewImg" src="" style="max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;display:block" />
+    <div id="galeriPreviewLabel" style="text-align:center;color:#fff;font-size:13px;margin-top:10px;font-weight:600"></div>
+  </div>
+</div>
+
+<!-- MODAL PREVIEW EXCEL -->
+<div class="modal-overlay" id="modalPreviewExcel">
+  <div class="modal" style="max-width:98vw;width:720px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-file-excel" style="color:#1d6f42"></i> Preview Data Excel</div>
+      <button class="modal-close" onclick="closeModal('modalPreviewExcel')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:0;max-height:70vh;overflow-y:auto">
+      <div id="excelPreviewContent" style="padding:16px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalPreviewExcel')">
+        <i class="fas fa-times"></i> Tutup
+      </button>
+      <button class="btn btn-primary" onclick="unduhExcel()">
+        <i class="fas fa-download"></i> Unduh Excel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PREVIEW PDF -->
+<div class="modal-overlay" id="modalPreviewPDF">
+  <div class="modal" style="max-width:98vw;width:720px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-file-pdf" style="color:#e53935"></i> Preview Laporan PDF</div>
+      <button class="modal-close" onclick="closeModal('modalPreviewPDF')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:70vh;overflow-y:auto">
+      <div id="pdfPreviewContent"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalPreviewPDF')">
+        <i class="fas fa-times"></i> Tutup
+      </button>
+      <button class="btn btn-danger" id="btnUnduhPDF" onclick="unduhPDF()">
+        <i class="fas fa-download"></i> Unduh PDF
       </button>
     </div>
   </div>
