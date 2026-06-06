@@ -458,18 +458,18 @@ function farmerCardHTML(f) {
         </div>
         ${commodityBadge(f.komoditas)}
       </div>
-      <div class="farmer-card-footer" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
-        <button class="btn-card-action" title="Detail" onclick="openDetail('${f.id}')">
-          <i class="fas fa-eye"></i><span style="font-size:10px;display:block;margin-top:2px">Detail</span>
+      <div class="farmer-card-footer" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:8px">
+        <button onclick="openDetail('${f.id}')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:1px solid var(--gray-200);border-radius:8px;background:var(--white);cursor:pointer;font-size:11px;color:var(--gray-700);font-weight:500">
+          <i class="fas fa-eye" style="font-size:14px;color:var(--green-600)"></i>Detail
         </button>
-        <button class="btn-card-action" title="Kartu Petani" onclick="event.stopPropagation();cetakKartu('${f.id}')">
-          <i class="fas fa-id-card"></i><span style="font-size:10px;display:block;margin-top:2px">Kartu</span>
+        <button onclick="event.stopPropagation();cetakKartu('${f.id}')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:1px solid var(--gray-200);border-radius:8px;background:var(--white);cursor:pointer;font-size:11px;color:var(--gray-700);font-weight:500">
+          <i class="fas fa-id-card" style="font-size:14px;color:var(--blue-500)"></i>Kartu
         </button>
-        <button class="btn-card-action" title="Edit" onclick="event.stopPropagation();openEditFarmer('${f.id}')">
-          <i class="fas fa-pen"></i><span style="font-size:10px;display:block;margin-top:2px">Edit</span>
+        <button onclick="event.stopPropagation();openEditFarmer('${f.id}')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:1px solid var(--gray-200);border-radius:8px;background:var(--white);cursor:pointer;font-size:11px;color:var(--gray-700);font-weight:500">
+          <i class="fas fa-pen" style="font-size:14px;color:#f59e0b"></i>Edit
         </button>
-        <button class="btn-card-action danger" title="Hapus" onclick="event.stopPropagation();confirmDeleteFarmer('${f.id}')">
-          <i class="fas fa-trash"></i><span style="font-size:10px;display:block;margin-top:2px">Hapus</span>
+        <button onclick="event.stopPropagation();confirmDeleteFarmer('${f.id}')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:1px solid #fecaca;border-radius:8px;background:#fff5f5;cursor:pointer;font-size:11px;color:#dc2626;font-weight:500">
+          <i class="fas fa-trash" style="font-size:14px;color:#dc2626"></i>Hapus
         </button>
       </div>
     </div>
@@ -695,6 +695,7 @@ function saveFarmer(e) {
         komoditas,
         jumlah,
         satuan: row.querySelector('.prod-satuan')?.value || 'Kg',
+        luas:   parseFloat(row.querySelector('.prod-luas')?.value) || 0,
         harga,
         total: jumlah * harga,
         pembeli: row.querySelector('.prod-pembeli')?.value || '',
@@ -970,7 +971,11 @@ function addProduksiRow(data = {}) {
         </select>
       </div>
     </div>
-    <div class="form-row cols-2">
+    <div class="form-row cols-3">
+      <div class="form-group">
+        <label class="form-label">Luas Lahan (Ha)</label>
+        <input type="number" class="form-control prod-luas" value="${data.luas||''}" step="0.01" placeholder="0.00" />
+      </div>
       <div class="form-group">
         <label class="form-label">Harga/Satuan (Rp)</label>
         <input type="number" class="form-control prod-harga" value="${data.harga||''}" oninput="calcTotalRow(this)" />
@@ -1354,6 +1359,21 @@ function getGPSForLahan(btn) {
       showToast(msg[err.code] || 'Gagal mengambil lokasi', 'error');
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+
+function getGPSForVisit() {
+  if (!navigator.geolocation) { showToast('GPS tidak tersedia di perangkat ini', 'error'); return; }
+  showToast('Mengambil lokasi GPS...', 'info');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById('vLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('vLng').value = pos.coords.longitude.toFixed(6);
+      showToast('Lokasi GPS berhasil diambil', 'success');
+    },
+    (err) => showToast('Gagal ambil GPS: ' + err.message, 'error'),
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
@@ -1848,9 +1868,58 @@ function openAddVisitModal(farmerId) {
   populateFilters(); // refresh select petani
   if (farmerId) {
     document.getElementById('vFarmerSelect').value = farmerId;
+  const hamaList = document.getElementById('visitHamaList');
+  if (hamaList) hamaList.innerHTML = '';
     document.getElementById('visitFarmerId').value = farmerId;
   }
   openModal('modalVisit');
+}
+
+
+// ============================================================
+//  HAMA DI FORM KUNJUNGAN
+// ============================================================
+
+function addVisitHamaRow() {
+  const list = document.getElementById('visitHamaList');
+  if (!list) return;
+  const idx = list.querySelectorAll('.visit-hama-row').length + 1;
+  const div = document.createElement('div');
+  div.className = 'visit-hama-row';
+  div.style.cssText = 'background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:8px;position:relative';
+  div.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:14px">✕</button>
+    <div style="font-weight:600;font-size:12px;color:var(--gray-600);margin-bottom:8px">Hama/Penyakit #${idx}</div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Nama Tanaman</label>
+        <input type="text" class="form-control hama-tanaman" placeholder="contoh: Kopi" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nama Hama/Penyakit</label>
+        <input type="text" class="form-control hama-nama" placeholder="contoh: Penggerek Buah" />
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label class="form-label">Tingkat Serangan</label>
+        <select class="form-control hama-tingkat">
+          <option>Ringan</option><option>Sedang</option><option>Berat</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-control hama-status">
+          <option>Dalam Pemantauan</option><option>Ditangani</option><option>Selesai</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Solusi/Penanganan</label>
+      <input type="text" class="form-control hama-solusi" placeholder="contoh: Semprot insektisida" />
+    </div>
+  `;
+  list.appendChild(div);
 }
 
 function saveVisit(e) {
@@ -1869,7 +1938,23 @@ function saveVisit(e) {
     rekomendasi: document.getElementById('vRekomendasi').value,
     lat: parseFloat(document.getElementById('vLat').value)||null,
     lng: parseFloat(document.getElementById('vLng').value)||null,
-    catatan: document.getElementById('vCatatan').value
+    catatan: document.getElementById('vCatatan').value,
+    hama: (() => {
+      const rows = document.querySelectorAll('#visitHamaList .visit-hama-row');
+      const result = [];
+      rows.forEach(row => {
+        const nama = row.querySelector('.hama-nama')?.value?.trim();
+        if (nama) result.push({
+          id: 'H' + Date.now() + Math.random(),
+          tanaman:  row.querySelector('.hama-tanaman')?.value?.trim() || '',
+          nama,
+          tingkat:  row.querySelector('.hama-tingkat')?.value || 'Ringan',
+          status:   row.querySelector('.hama-status')?.value  || 'Dalam Pemantauan',
+          solusi:   row.querySelector('.hama-solusi')?.value?.trim()  || '',
+        });
+      });
+      return result;
+    })()
   });
   saveToStorage(); refreshAll();
   closeModal('modalVisit');
@@ -2034,7 +2119,7 @@ function renderMapMarkers() {
     const totalLahan = (f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0);
     const avatarHtml = f.foto ? `<img src="${f.foto}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;display:block;margin:0 auto" />` : `<div style="font-size:32px;text-align:center">👨‍🌾</div>`;
 
-    const marker = L.marker([f.lat, f.lng], { icon })
+    const marker = L.marker([f.lat, f.lng], { icon, commodity: f.komoditas || '-' })
       .addTo(map)
       .bindPopup(`
         <div class="popup-content">
