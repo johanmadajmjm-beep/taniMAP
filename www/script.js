@@ -28,6 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('splash_done')) {
     const splash = document.getElementById('splashScreen');
     if (splash) splash.style.display = 'none';
+    // Render ulang dashboard setelah splash hilang agar container punya ukuran benar
+    setTimeout(() => {
+      if (typeof renderDashboard === 'function') renderDashboard();
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
   }
 });
 
@@ -232,6 +237,25 @@ function observeCharts() {
   });
 }
 
+// ResizeObserver untuk stats grid — agar responsif real-time tanpa refresh
+function observeStatsGrid() {
+  if (!window.ResizeObserver) return;
+  const pageContent = document.querySelector('.page-content');
+  if (!pageContent) return;
+  const ro = new ResizeObserver(() => {
+    // Trigger reflow pada stats grid agar ukuran card menyesuaikan
+    ['statsGridPrimary', 'statsGridSecondary'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = 'none';
+        el.offsetHeight; // force reflow
+        el.style.display = '';
+      }
+    });
+  });
+  ro.observe(pageContent);
+}
+
 function navigate(page) {
   currentPage = page;
 
@@ -325,6 +349,7 @@ function renderDashboard() {
   renderStats();
   renderCharts();
   observeCharts();
+  observeStatsGrid();
 }
 
 function renderDashboardExtra() {
