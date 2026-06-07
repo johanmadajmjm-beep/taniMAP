@@ -602,7 +602,7 @@ thead th {
   text-transform: uppercase; letter-spacing: .7px;
   white-space: nowrap;
 }
-tbody td { padding: 13px 14px; border-bottom: 1px solid var(--gray-50); color: var(--gray-700); }
+tbody td { padding: 13px 14px; border-bottom: 1px solid var(--gray-50); color: var(--gray-700); white-space: nowrap; }
 tbody tr:hover { background: var(--green-50); }
 tbody tr:last-child td { border-bottom: none; }
 
