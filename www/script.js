@@ -463,51 +463,66 @@ function renderCharts() {
     }
   });
 
-  // Chart: Produksi per Komoditas
+  // Chart: Produksi per Komoditas (horizontal bar)
   const prodMap = {};
   farmers.forEach(f => (f.produksi || []).forEach(p => {
     prodMap[p.komoditas] = (prodMap[p.komoditas] || 0) + (parseFloat(p.jumlah) || 0);
   }));
+  const prodSorted = Object.entries(prodMap).sort((a, b) => b[1] - a[1]);
   charts['chartProduction'] = new Chart(document.getElementById('chartProduction'), {
     type: 'bar',
     data: {
-      labels: Object.keys(prodMap),
-      datasets: [{ label: 'Produksi (Kg)', data: Object.values(prodMap),
-        backgroundColor: (ctx) => {
-          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
-          g.addColorStop(0, '#fbbf24'); g.addColorStop(1, '#d97706');
-          return g;
-        },
-        borderRadius: 8, borderSkipped: false }]
+      labels: prodSorted.map(e => e[0]),
+      datasets: [{ label: 'Produksi (Kg)', data: prodSorted.map(e => e[1]),
+        backgroundColor: '#fbbf24',
+        borderRadius: 6, borderSkipped: false }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('id-ID')} Kg` } }
+      },
       scales: {
-        y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
-        x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+        x: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
+        y: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
 
-  // Chart: Penjualan per Komoditas (Total Rp)
+  // Chart: Penjualan per Komoditas (horizontal bar + format juta)
   const penjualanMap = {};
   farmers.forEach(f => (f.produksi || []).forEach(p => {
     penjualanMap[p.komoditas] = (penjualanMap[p.komoditas] || 0) + (parseFloat(p.total) || 0);
   }));
+  const penjualanSorted = Object.entries(penjualanMap).sort((a, b) => b[1] - a[1]);
   const penjualanColors = ['#22c55e','#f59e0b','#14b8a6','#6d4c41','#ef4444','#f97316','#8b5cf6','#3b82f6','#6b7280'];
   charts['chartPenjualan'] = new Chart(document.getElementById('chartPenjualan'), {
-    type: 'doughnut',
+    type: 'bar',
     data: {
-      labels: Object.keys(penjualanMap),
-      datasets: [{ data: Object.values(penjualanMap), backgroundColor: penjualanColors, borderWidth: 2, borderColor: '#fff', hoverBorderWidth: 3 }]
+      labels: penjualanSorted.map(e => e[0]),
+      datasets: [{
+        label: 'Penjualan',
+        data: penjualanSorted.map(e => e[1]),
+        backgroundColor: penjualanSorted.map((_, i) => penjualanColors[i % penjualanColors.length]),
+        borderRadius: 6, borderSkipped: false
+      }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
-      cutout: '65%',
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
+        legend: { display: false },
         tooltip: { callbacks: { label: ctx => ` Rp ${formatJuta(ctx.raw)}` } }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: '#9ca3af', callback: v => formatJuta(v) },
+          grid: { color: '#f3f4f6' }
+        },
+        y: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
