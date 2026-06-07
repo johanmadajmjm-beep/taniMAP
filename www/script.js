@@ -16,37 +16,12 @@ function mulaiApp() {
 }
 
 
-// ============================================================
-//  RESPONSIVE RESIZE — real-time tanpa perlu refresh
-// ============================================================
-
-// Debounce helper
-function debounce(fn, delay) {
-  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
-}
-
-// Resize semua chart yang aktif
-function resizeAllCharts() {
-  Object.values(charts).forEach(c => { if (c) c.resize(); });
-}
-
-// Re-render ulang chart agar clamp() teraplikasi pada data baru
-const debouncedResizeCharts = debounce(() => {
-  resizeAllCharts();
-}, 80);
-
-// ResizeObserver pada .page-content — bereaksi terhadap perubahan ukuran container
-// (ini yang selama ini hilang — window resize event tidak cukup untuk Capacitor/webview)
-function initResponsiveObserver() {
-  const pageContent = document.querySelector('.page-content');
-  if (!pageContent || !window.ResizeObserver) return;
-  const ro = new ResizeObserver(debouncedResizeCharts);
-  ro.observe(pageContent);
-}
-
-// Window resize tetap dipasang sebagai fallback
-window.addEventListener('resize', debouncedResizeCharts);
-
+// Re-render chart saat window resize atau zoom
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(chart => {
+    if (chart) chart.resize();
+  });
+});
 
 // Cek saat halaman load - skip splash jika sudah pernah masuk
 document.addEventListener('DOMContentLoaded', function() {
@@ -82,7 +57,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   navigate('dashboard');       // Tampilkan halaman beranda
   loadAppPreferences();        // Muat tema & ukuran huruf
   initBackButton();            // Aktifkan back button handler
-  initResponsiveObserver();    // Aktifkan responsive resize real-time
 });
 // ============================================================
 //  UNIVERSAL DOWNLOAD — APK Android + Browser
@@ -251,9 +225,9 @@ function observeCharts() {
     if (!canvas) return;
     const container = canvas.parentElement;
     if (!container) return;
-    const ro = new ResizeObserver(debounce(() => {
+    const ro = new ResizeObserver(() => {
       if (charts[id]) charts[id].resize();
-    }, 60));
+    });
     ro.observe(container);
   });
 }
@@ -489,68 +463,51 @@ function renderCharts() {
     }
   });
 
-  // Chart: Produksi per Komoditas (horizontal bar)
+  // Chart: Produksi per Komoditas
   const prodMap = {};
   farmers.forEach(f => (f.produksi || []).forEach(p => {
     prodMap[p.komoditas] = (prodMap[p.komoditas] || 0) + (parseFloat(p.jumlah) || 0);
   }));
-  const prodSorted = Object.entries(prodMap).sort((a, b) => b[1] - a[1]);
   charts['chartProduction'] = new Chart(document.getElementById('chartProduction'), {
     type: 'bar',
     data: {
-      labels: prodSorted.map(e => e[0]),
-      datasets: [{ label: 'Produksi (Kg)', data: prodSorted.map(e => e[1]),
+      labels: Object.keys(prodMap),
+      datasets: [{ label: 'Produksi (Kg)', data: Object.values(prodMap),
         backgroundColor: (ctx) => {
-          const g = ctx.chart.ctx.createLinearGradient(0, 0, ctx.chart.width, 0);
-          g.addColorStop(0, '#d97706'); g.addColorStop(1, '#fbbf24');
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+          g.addColorStop(0, '#fbbf24'); g.addColorStop(1, '#d97706');
           return g;
         },
-        borderRadius: 6, borderSkipped: false }]
+        borderRadius: 8, borderSkipped: false }]
     },
     options: {
-      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('id-ID')} Kg` } }
-      },
+      plugins: { legend: { display: false } },
       scales: {
-        x: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
-        y: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } }
+        y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
       }
     }
   });
 
-  // Chart: Penjualan per Komoditas (horizontal bar)
+  // Chart: Penjualan per Komoditas (Total Rp)
   const penjualanMap = {};
   farmers.forEach(f => (f.produksi || []).forEach(p => {
     penjualanMap[p.komoditas] = (penjualanMap[p.komoditas] || 0) + (parseFloat(p.total) || 0);
   }));
-  const penjualanSorted = Object.entries(penjualanMap).sort((a, b) => b[1] - a[1]);
   const penjualanColors = ['#22c55e','#f59e0b','#14b8a6','#6d4c41','#ef4444','#f97316','#8b5cf6','#3b82f6','#6b7280'];
   charts['chartPenjualan'] = new Chart(document.getElementById('chartPenjualan'), {
-    type: 'bar',
+    type: 'doughnut',
     data: {
-      labels: penjualanSorted.map(e => e[0]),
-      datasets: [{
-        label: 'Penjualan (Rp)',
-        data: penjualanSorted.map(e => e[1]),
-        backgroundColor: penjualanSorted.map((_, i) => penjualanColors[i % penjualanColors.length] + 'cc'),
-        borderColor:     penjualanSorted.map((_, i) => penjualanColors[i % penjualanColors.length]),
-        borderWidth: 1.5,
-        borderRadius: 6, borderSkipped: false
-      }]
+      labels: Object.keys(penjualanMap),
+      datasets: [{ data: Object.values(penjualanMap), backgroundColor: penjualanColors, borderWidth: 2, borderColor: '#fff', hoverBorderWidth: 3 }]
     },
     options: {
-      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
       plugins: {
-        legend: { display: false },
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
         tooltip: { callbacks: { label: ctx => ` Rp ${formatNumber(ctx.raw)}` } }
-      },
-      scales: {
-        x: { beginAtZero: true, ticks: { color: '#9ca3af', callback: v => 'Rp ' + formatNumber(v) }, grid: { color: '#f3f4f6' } },
-        y: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
@@ -2213,7 +2170,7 @@ function renderProductionTable() {
       <td class="hide-mobile">${p.jumlah} ${p.satuan}</td>
       <td class="hide-mobile">Rp ${formatNumber(p.harga)}</td>
       <td class="fw-bold text-green">Rp ${formatNumber(p.total)}</td>
-      <td class="hide-mobile">${p.pembeli || '-'}</td>
+      <td>${p.pembeli || '-'}</td>
     </tr>
   `).join('');
 }
@@ -2992,12 +2949,12 @@ function renderHamaTable(searchVal) {
     <tr>
       <td>${i + 1}</td>
       <td><strong>${h.farmerName || '-'}</strong></td>
-      <td class="hide-mobile">${h.desa || '-'}</td>
-      <td class="hide-mobile">${h.tanaman || '-'}</td>
+      <td>${h.desa || '-'}</td>
+      <td>${h.tanaman || '-'}</td>
       <td>${h.nama || '-'}</td>
       <td>${pestLevelBadge(h.tingkat)}</td>
-      <td class="hide-mobile">${h.tanggalKunjungan || '-'}</td>
-      <td class="hide-mobile" style="font-size:12px;color:var(--gray-500)">${h.solusi || h.status || '-'}</td>
+      <td>${h.tanggalKunjungan || '-'}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${h.solusi || h.status || '-'}</td>
     </tr>
   `).join('');
 }
