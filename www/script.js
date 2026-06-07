@@ -214,6 +214,24 @@ function closeMoreMenu() {
   document.getElementById('btnMoreNav').style.transform = 'rotate(0deg)';
 }
 
+
+// ResizeObserver untuk chart — auto resize saat container berubah ukuran (zoom/resize)
+function observeCharts() {
+  if (!window.ResizeObserver) return;
+  const chartIds = ['chartVillage','chartCommodity','chartProduction',
+                    'chartPenjualan','chartHamaTingkatOv'];
+  chartIds.forEach(id => {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const container = canvas.parentElement;
+    if (!container) return;
+    const ro = new ResizeObserver(() => {
+      if (charts[id]) charts[id].resize();
+    });
+    ro.observe(container);
+  });
+}
+
 function navigate(page) {
   currentPage = page;
 
@@ -277,9 +295,6 @@ function navigate(page) {
   // Render galeri saat dibuka
   if (page === 'gallery') renderGallery();
 
-  // Render hama saat dibuka
-  if (page === 'hama') renderHama();
-
   // Tutup sidebar di mobile
   if (window.innerWidth < 900) closeSidebar();
 }
@@ -305,6 +320,7 @@ function closeSidebar() {
 function renderDashboard() {
   renderStats();
   renderCharts();
+  observeCharts();
 }
 
 function renderDashboardExtra() {
@@ -397,7 +413,7 @@ function renderStats() {
 
 function renderCharts() {
   // Hancurkan chart lama
-  ['chartVillage', 'chartCommodity', 'chartProduction', 'chartPenjualan', 'chartHamaTingkat', 'chartHamaTanaman', 'chartHamaTingkatOv', 'chartHamaTanamanOv'].forEach(id => {
+  ['chartVillage', 'chartCommodity', 'chartProduction'].forEach(id => {
     if (charts[id]) { charts[id].destroy(); delete charts[id]; }
   });
 
@@ -469,73 +485,6 @@ function renderCharts() {
       }
     }
   });
-
-
-  // Chart: Penjualan per Komoditas
-  const penjualanMap = {};
-  farmers.forEach(f => (f.produksi||[]).forEach(p => {
-    const k = p.komoditas || 'Lainnya';
-    penjualanMap[k] = (penjualanMap[k]||0) + (parseFloat(p.total)||0);
-  }));
-  if (document.getElementById('chartPenjualan') && Object.keys(penjualanMap).length) {
-    if (charts['chartPenjualan']) { charts['chartPenjualan'].destroy(); }
-    charts['chartPenjualan'] = new Chart(document.getElementById('chartPenjualan'), {
-      type: 'bar',
-      data: {
-        labels: Object.keys(penjualanMap),
-        datasets: [{ label: 'Penjualan (Rp)', data: Object.values(penjualanMap),
-          backgroundColor: (ctx) => {
-            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
-            g.addColorStop(0, '#10b981'); g.addColorStop(1, '#059669');
-            return g;
-          }, borderRadius: 6 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: ctx => 'Rp ' + ctx.raw.toLocaleString('id-ID') } }
-        },
-        scales: { y: { ticks: { callback: v => 'Rp ' + (v/1e6).toFixed(1) + 'jt' } } }
-      }
-    });
-  }
-
-  // Chart Overview: Donat Tingkat Hama
-  const allHamaOv = [];
-  farmers.forEach(f => {
-    (f.hama||[]).forEach(h => allHamaOv.push(h));
-    (f.kunjungan||[]).forEach(k => (k.hama||[]).forEach(h => allHamaOv.push(h)));
-  });
-  const tingkatOvMap = {};
-  allHamaOv.forEach(h => { tingkatOvMap[h.tingkat||'-'] = (tingkatOvMap[h.tingkat||'-']||0)+1; });
-  const tanamanOvMap = {};
-  allHamaOv.forEach(h => { tanamanOvMap[h.tanaman||'-'] = (tanamanOvMap[h.tanaman||'-']||0)+1; });
-
-  const elTOv = document.getElementById('chartHamaTingkatOv');
-  if (elTOv && Object.keys(tingkatOvMap).length) {
-    if (charts['chartHamaTingkatOv']) charts['chartHamaTingkatOv'].destroy();
-    charts['chartHamaTingkatOv'] = new Chart(elTOv, {
-      type: 'doughnut',
-      data: { labels: Object.keys(tingkatOvMap),
-        datasets: [{ data: Object.values(tingkatOvMap),
-          backgroundColor: ['#10b981','#f59e0b','#ef4444','#6b7280'], borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } } }
-    });
-  }
-
-  const elTanOv = document.getElementById('chartHamaTanamanOv');
-  if (elTanOv && Object.keys(tanamanOvMap).length) {
-    if (charts['chartHamaTanamanOv']) charts['chartHamaTanamanOv'].destroy();
-    charts['chartHamaTanamanOv'] = new Chart(elTanOv, {
-      type: 'bar',
-      data: { labels: Object.keys(tanamanOvMap),
-        datasets: [{ data: Object.values(tanamanOvMap),
-          backgroundColor: '#6366f1', borderRadius: 6 }] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } } }
-    });
-  }
 }
 
 function renderRecentFarmers() {
@@ -3509,134 +3458,6 @@ function collectAllPhotos() {
  */
 // Cache foto untuk akses cepat tanpa collectAllPhotos ulang
 let _galleryCache = [];
-
-
-// ============================================================
-//  REKAP HAMA
-// ============================================================
-
-function renderHama() {
-  const allHama = [];
-  farmers.forEach(f => {
-    (f.kunjungan||[]).forEach(k => {
-      (k.hama||[]).forEach(h => {
-        allHama.push({
-          petani: f.nama, desa: f.desa,
-          tanaman: h.tanaman || k.tanaman || '-',
-          nama: h.nama || '-',
-          tingkat: h.tingkat || '-',
-          tanggal: k.tanggal || '-',
-          keterangan: h.keterangan || '-',
-        });
-      });
-      // Juga cek field hama langsung di kunjungan
-      if (k.hama_nama) {
-        allHama.push({
-          petani: f.nama, desa: f.desa,
-          tanaman: k.tanaman || '-',
-          nama: k.hama_nama || '-',
-          tingkat: k.hama_tingkat || '-',
-          tanggal: k.tanggal || '-',
-          keterangan: k.hama_keterangan || '-',
-        });
-      }
-    });
-    // Cek hama di level petani
-    (f.hama||[]).forEach(h => {
-      allHama.push({
-        petani: f.nama, desa: f.desa,
-        tanaman: h.tanaman || '-',
-        nama: h.nama || '-',
-        tingkat: h.tingkat || '-',
-        tanggal: h.tanggal || '-',
-        keterangan: h.keterangan || '-',
-      });
-    });
-  });
-
-  window._allHamaData = allHama;
-  renderHamaTable(allHama);
-  renderHamaCharts(allHama);
-
-  const countEl = document.getElementById('hamaCount');
-  if (countEl) countEl.textContent = allHama.length + ' laporan';
-}
-
-function renderHamaTable(data) {
-  const tbody = document.getElementById('hamaTableBody');
-  if (!tbody) return;
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400)">Belum ada laporan hama</td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.map((h, i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td><strong>${h.petani}</strong></td>
-      <td>${h.desa}</td>
-      <td>${h.tanaman}</td>
-      <td>${h.nama}</td>
-      <td><span class="badge ${h.tingkat==='Berat'?'badge-red':h.tingkat==='Sedang'?'badge-amber':'badge-green'}">${h.tingkat}</span></td>
-      <td>${h.tanggal}</td>
-      <td style="font-size:12px">${h.keterangan}</td>
-    </tr>
-  `).join('');
-}
-
-function renderHamaCharts(data) {
-  // Donat: Tingkat Serangan
-  const tingkatMap = {};
-  data.forEach(h => { tingkatMap[h.tingkat] = (tingkatMap[h.tingkat]||0) + 1; });
-
-  const elTingkat = document.getElementById('chartHamaTingkat');
-  if (elTingkat && Object.keys(tingkatMap).length) {
-    if (charts['chartHamaTingkat']) charts['chartHamaTingkat'].destroy();
-    charts['chartHamaTingkat'] = new Chart(elTingkat, {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(tingkatMap),
-        datasets: [{ data: Object.values(tingkatMap),
-          backgroundColor: ['#10b981','#f59e0b','#ef4444','#6b7280'],
-          borderWidth: 0 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } } }
-    });
-  }
-
-  // Bar: Hama per Tanaman
-  const tanamanMap = {};
-  data.forEach(h => { tanamanMap[h.tanaman] = (tanamanMap[h.tanaman]||0) + 1; });
-
-  const elTanaman = document.getElementById('chartHamaTanaman');
-  if (elTanaman && Object.keys(tanamanMap).length) {
-    if (charts['chartHamaTanaman']) charts['chartHamaTanaman'].destroy();
-    charts['chartHamaTanaman'] = new Chart(elTanaman, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(tanamanMap),
-        datasets: [{ label: 'Laporan', data: Object.values(tanamanMap),
-          backgroundColor: '#6366f1', borderRadius: 6 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } } }
-    });
-  }
-}
-
-function filterHama(val) {
-  if (!window._allHamaData) return;
-  const tingkat = document.getElementById('filterHamaTingkat')?.value || '';
-  const search = typeof val === 'string' ? val.toLowerCase() : '';
-  let filtered = window._allHamaData;
-  if (tingkat) filtered = filtered.filter(h => h.tingkat === tingkat);
-  if (search) filtered = filtered.filter(h =>
-    h.nama.toLowerCase().includes(search) ||
-    h.petani.toLowerCase().includes(search) ||
-    h.tanaman.toLowerCase().includes(search)
-  );
-  renderHamaTable(filtered);
-}
 
 function renderGallery() {
   const grid = document.getElementById('galleryGrid');
