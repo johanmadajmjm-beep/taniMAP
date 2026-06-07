@@ -363,7 +363,7 @@ a { color: var(--green-600); text-decoration: none; }
 /* ============================================
    PAGE CONTENT
    ============================================ */
-.page-content { padding: 20px 24px 80px; flex: 1; }
+.page-content { padding: 20px 24px 80px; flex: 1; max-width: 1200px; width: 100%; }
 .page { display: none; animation: pageIn 0.28s var(--ease) both; }
 .page.active { display: block; }
 @keyframes pageIn {
