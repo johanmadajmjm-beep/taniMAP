@@ -15,6 +15,7 @@ function mulaiApp() {
   }, 500);
 }
 
+
 // Re-render chart saat window resize atau zoom
 window.addEventListener('resize', () => {
   Object.values(charts).forEach(chart => {
@@ -45,6 +46,7 @@ let map = null;             // Instance Leaflet map
 let mapMarkers = [];        // Array marker di peta
 let charts = {};            // Chart.js instances
 let currentPage = 'dashboard';  // Halaman aktif
+
 
 // ============================================================
 //  INITIALIZATION
@@ -108,6 +110,8 @@ async function universalDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   return true;
 }
+
+
 
 /**
  * Muat data dari localStorage. Jika kosong, muat dari farmers.json
@@ -209,6 +213,7 @@ function closeMoreMenu() {
   if (icon) { icon.className = 'fas fa-grip'; }
   document.getElementById('btnMoreNav').style.transform = 'rotate(0deg)';
 }
+
 
 // ResizeObserver untuk chart — auto resize saat container berubah ukuran (zoom/resize)
 function observeCharts() {
@@ -320,6 +325,61 @@ function renderDashboard() {
   renderStats();
   renderCharts();
   observeCharts();
+}
+
+function renderDashboardExtra() {
+  // Horizontal bar produksi per komoditas
+  const prodMap = {};
+  farmers.forEach(f => (f.produksi||[]).forEach(p => {
+    prodMap[p.komoditas] = (prodMap[p.komoditas]||0) + (parseFloat(p.jumlah)||0);
+  }));
+  const sorted = Object.entries(prodMap).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const maxVal = sorted.length ? sorted[0][1] : 1;
+  const hbarEl = document.getElementById('produksiHBar');
+  if (hbarEl) {
+    if (!sorted.length) {
+      hbarEl.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">Belum ada data produksi</div>';
+    } else {
+      hbarEl.innerHTML = sorted.map(([nama, val]) => `
+        <div class="hbar-item">
+          <div class="hbar-label">
+            <span class="hbar-name">${nama}</span>
+            <span class="hbar-val">${val.toLocaleString('id-ID')} Kg</span>
+          </div>
+          <div class="hbar-track">
+            <div class="hbar-fill" style="width:${(val/maxVal*100).toFixed(1)}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Kunjungan terbaru
+  const allVisits = [];
+  farmers.forEach(f => (f.kunjungan||[]).forEach(k => allVisits.push({...k, farmerName: f.nama, farmerDesa: f.desa, komoditas: f.komoditas})));
+  allVisits.sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+  const recent = allVisits.slice(0, 5);
+  const visitEl = document.getElementById('recentVisitsList');
+  if (visitEl) {
+    if (!recent.length) {
+      visitEl.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">Belum ada kunjungan</div>';
+    } else {
+      visitEl.innerHTML = recent.map(k => {
+        const initials = k.farmerName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+        const colors = ['#22c55e','#0d9488','#f59e0b','#3b82f6','#8b5cf6'];
+        const color = colors[k.farmerName.length % colors.length];
+        return `
+          <div class="recent-item">
+            <div class="recent-avatar" style="background:linear-gradient(135deg,${color},${color}99)">${initials}</div>
+            <div class="recent-info">
+              <div class="recent-name">${k.farmerName}</div>
+              <div class="recent-sub">${k.farmerDesa}${k.farmerDesa && k.komoditas ? ', ' : ''}${commodityBadge(k.komoditas)}</div>
+            </div>
+            <div class="recent-date">${k.tanggal}</div>
+          </div>`;
+      }).join('');
+    }
+  }
 }
 
 function renderStats() {
@@ -452,7 +512,7 @@ function renderCharts() {
     }
   });
 
-  // Chart: Tingkat Serangan Hama (doughnut)
+  // Chart: Tingkat Serangan Hama (pie)
   const hamaLevel = { Ringan: 0, Sedang: 0, Berat: 0 };
   farmers.forEach(f => {
     (f.hama || []).forEach(h => { if (hamaLevel[h.tingkat] !== undefined) hamaLevel[h.tingkat]++; });
@@ -473,6 +533,28 @@ function renderCharts() {
       }
     }
   });
+}
+
+function renderRecentFarmers() {
+  const tbody = document.getElementById('recentFarmersTable');
+  const recent = [...farmers].sort((a, b) => new Date(b.tanggalInput) - new Date(a.tanggalInput)).slice(0, 5);
+  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px">Belum ada data</td></tr>'; return; }
+  tbody.innerHTML = recent.map(f => `
+    <tr>
+      <td>
+        <div class="flex items-center gap-1" style="gap:10px">
+          ${f.foto ? `<img src="${f.foto}" style="width:32px;height:32px;border-radius:6px;object-fit:cover" />` : `<div style="width:32px;height:32px;border-radius:6px;background:var(--green-100);display:flex;align-items:center;justify-content:center">👨‍🌾</div>`}
+          <span class="fw-bold">${f.nama}</span>
+        </div>
+      </td>
+      <td>${f.desa}</td>
+      <td>${commodityBadge(f.komoditas)}</td>
+      <td>${(f.lahan||[]).reduce((s,l)=>s+(parseFloat(l.luas)||0),0).toFixed(2)} Ha</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openDetail('${f.id}')">Detail</button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 // ============================================================
@@ -643,6 +725,7 @@ function openEditFarmer(id) {
   updateRowCounts();
   openModal('modalFarmer');
 }
+
 
 /**
  * Kompres foto sebelum disimpan ke localStorage
@@ -1334,6 +1417,13 @@ let _currentFotoData = null;
 let _currentFotoFilename = null;
 
 /**
+ * Tampilkan foto di modal popup — lalu user bisa simpan dari sana
+ */
+function _triggerDownload(dataUrl, filename) {
+  bukaModalFoto(dataUrl, filename, filename.replace(/_/g,' ').replace('.jpg',''));
+}
+
+/**
  * Buka modal viewer foto
  */
 function bukaModalFoto(dataUrl, filename, judul) {
@@ -1411,6 +1501,7 @@ function getGPSForLahan(btn) {
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
+
 
 function getGPSForVisit() {
   if (!navigator.geolocation) { showToast('GPS tidak tersedia di perangkat ini', 'error'); return; }
@@ -1930,6 +2021,7 @@ function openAddVisitModal(farmerId) {
   openModal('modalVisit');
 }
 
+
 // ============================================================
 //  HAMA DI FORM KUNJUNGAN
 // ============================================================
@@ -2223,6 +2315,7 @@ function resetMap() {
 // ============================================================
 //  REPORTS
 // ============================================================
+
 
 /**
  * Kumpulkan semua hama dari kunjungan semua petani
@@ -2532,6 +2625,19 @@ function _buildExcelWorkbook(XLSXlib) {
   return wb;
 }
 
+async function exportExcel() {
+  const XLSXlib = window.XLSX;
+  if (!XLSXlib) { showToast('Library Excel belum termuat', 'error'); return; }
+  await bukaPreviewExcel();
+}
+
+/**
+ * Export ke PDF — berisi semua rekap laporan
+ */
+async function exportPDF() {
+  await bukaPreviewPDF();
+}
+
 async function _buildPDFBlob(jsPDFLib) {
 
   const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -2677,6 +2783,14 @@ async function _buildPDFBlob(jsPDFLib) {
   return doc.output('blob');
 }
 
+function downloadFile(filename, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function confirmReset() {
   showConfirm('🗑️', 'Reset Data', 'Hapus SEMUA data petani dari aplikasi? Tindakan ini tidak bisa dibatalkan!', () => {
     farmers = [];
@@ -2794,7 +2908,6 @@ function getFallbackData() {
   ];
 }
 
-
 // ============================================================
 //  REKAP HAMA PAGE
 // ============================================================
@@ -2872,24 +2985,25 @@ function exportToGoogleSheets() {
     const totalKunjungan  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
     const totalProduksi   = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
 
+    // Update label langsung (tidak overwrite innerHTML agar elemen tidak hilang)
     const chkPetaniEl    = document.getElementById('chkPetani');
     const chkKunjunganEl = document.getElementById('chkKunjungan');
     const chkProduksiEl  = document.getElementById('chkProduksi');
 
-    if (chkPetaniEl) {
-      chkPetaniEl.checked = true;
+    if (chkPetaniEl)    {
       const lbl = chkPetaniEl.parentElement;
-      if (lbl.lastChild && lbl.lastChild.nodeType === 3) lbl.lastChild.textContent = ` Data Petani (${farmers.length} petani)`;
+      chkPetaniEl.checked = true;
+      lbl.lastChild.textContent = ` Data Petani (${farmers.length} petani)`;
     }
     if (chkKunjunganEl) {
-      chkKunjunganEl.checked = true;
       const lbl = chkKunjunganEl.parentElement;
-      if (lbl.lastChild && lbl.lastChild.nodeType === 3) lbl.lastChild.textContent = ` Data Kunjungan (${totalKunjungan} catatan)`;
+      chkKunjunganEl.checked = true;
+      lbl.lastChild.textContent = ` Data Kunjungan (${totalKunjungan} catatan)`;
     }
-    if (chkProduksiEl) {
-      chkProduksiEl.checked = true;
+    if (chkProduksiEl)  {
       const lbl = chkProduksiEl.parentElement;
-      if (lbl.lastChild && lbl.lastChild.nodeType === 3) lbl.lastChild.textContent = ` Data Produksi (${totalProduksi} catatan)`;
+      chkProduksiEl.checked = true;
+      lbl.lastChild.textContent = ` Data Produksi (${totalProduksi} catatan)`;
     }
 
     // Info foto
@@ -3042,6 +3156,8 @@ async function kirimViaJSONP(payload) {
   }
   return result;
 }
+
+
 
 /**
  * Helper tampilkan status di modal
@@ -3372,9 +3488,38 @@ function handleBackButton() {
 
 // initBackButton dipanggil dari DOMContentLoaded utama
 
+
 // ============================================================
 //  MODAL PREVIEW DOWNLOAD
 // ============================================================
+
+let _pendingDownloadBlob = null;
+let _pendingDownloadFilename = null;
+
+/**
+ * Tampilkan modal preview sebelum download
+ */
+function showDownloadPreview(blob, filename, title, format, info) {
+  _pendingDownloadBlob     = blob;
+  _pendingDownloadFilename = filename;
+  document.getElementById('dlPreviewTitle').textContent    = title || 'Preview Sebelum Download';
+  document.getElementById('dlPreviewFilename').textContent = filename;
+  document.getElementById('dlPreviewFormat').textContent   = format || '-';
+  document.getElementById('dlPreviewInfo').textContent     = info || '-';
+  document.getElementById('dlPreviewContent').innerHTML    = '';
+  openModal('modalDownloadPreview');
+}
+
+/**
+ * Eksekusi download dari modal preview
+ */
+async function executePendingDownload() {
+  if (!_pendingDownloadBlob || !_pendingDownloadFilename) return;
+  closeModal('modalDownloadPreview');
+  await universalDownload(_pendingDownloadBlob, _pendingDownloadFilename);
+  _pendingDownloadBlob     = null;
+  _pendingDownloadFilename = null;
+}
 
 // ============================================================
 // GALERI FOTO
@@ -3528,6 +3673,7 @@ function _galleryLazyLoad() {
 }
 
 let gallerySelected = new Set();
+
 
 /**
  * Buka popup preview foto galeri
