@@ -4,9 +4,18 @@
 function mulaiApp() {
   const splash = document.getElementById('splashScreen');
   if (!splash) return;
+  sessionStorage.setItem('splash_done', '1');
   splash.classList.add('hide');
   setTimeout(() => { splash.style.display = 'none'; }, 500);
 }
+
+// Cek saat halaman load - skip splash jika sudah pernah masuk
+(function() {
+  if (sessionStorage.getItem('splash_done')) {
+    const splash = document.getElementById('splashScreen');
+    if (splash) splash.style.display = 'none';
+  }
+})();
 
 /**
  * TaniMap — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani
