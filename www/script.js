@@ -18,7 +18,7 @@ function mulaiApp() {
 
 // Re-render chart saat window resize atau zoom
 window.addEventListener('resize', () => {
-  Object.values(state.charts).forEach(chart => {
+  Object.values(charts).forEach(chart => {
     if (chart) chart.resize();
   });
 });
@@ -274,6 +274,7 @@ function navigate(page) {
     production: ['Data Produksi', 'Rekap hasil produksi'],
     reports: ['Laporan', 'Rekap dan export data'],
     gallery: ['Galeri Foto', 'Foto petani, lahan, dan tanaman'],
+    hama: ['Rekap Hama & Penyakit', 'Data serangan hama dan penyakit tanaman'],
     settings: ['Pengaturan', 'Konfigurasi aplikasi'],
   };
   const t = titles[page] || [page, ''];
@@ -294,6 +295,9 @@ function navigate(page) {
 
   // Render galeri saat dibuka
   if (page === 'gallery') renderGallery();
+
+  // Render rekap hama saat dibuka
+  if (page === 'hama') renderHamaTable();
 
   // Tutup sidebar di mobile
   if (window.innerWidth < 900) closeSidebar();
@@ -413,7 +417,7 @@ function renderStats() {
 
 function renderCharts() {
   // Hancurkan chart lama
-  ['chartVillage', 'chartCommodity', 'chartProduction'].forEach(id => {
+  ['chartVillage', 'chartCommodity', 'chartProduction', 'chartPenjualan', 'chartHamaTingkatOv'].forEach(id => {
     if (charts[id]) { charts[id].destroy(); delete charts[id]; }
   });
 
@@ -482,6 +486,50 @@ function renderCharts() {
       scales: {
         y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
         x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Chart: Penjualan per Komoditas (Total Rp)
+  const penjualanMap = {};
+  farmers.forEach(f => (f.produksi || []).forEach(p => {
+    penjualanMap[p.komoditas] = (penjualanMap[p.komoditas] || 0) + (parseFloat(p.total) || 0);
+  }));
+  const penjualanColors = ['#22c55e','#f59e0b','#14b8a6','#6d4c41','#ef4444','#f97316','#8b5cf6','#3b82f6','#6b7280'];
+  charts['chartPenjualan'] = new Chart(document.getElementById('chartPenjualan'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(penjualanMap),
+      datasets: [{ data: Object.values(penjualanMap), backgroundColor: penjualanColors, borderWidth: 2, borderColor: '#fff', hoverBorderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
+        tooltip: { callbacks: { label: ctx => ` Rp ${formatNumber(ctx.raw)}` } }
+      }
+    }
+  });
+
+  // Chart: Tingkat Serangan Hama (pie)
+  const hamaLevel = { Ringan: 0, Sedang: 0, Berat: 0 };
+  farmers.forEach(f => {
+    (f.hama || []).forEach(h => { if (hamaLevel[h.tingkat] !== undefined) hamaLevel[h.tingkat]++; });
+    (f.kunjungan || []).forEach(k => (k.hama || []).forEach(h => { if (hamaLevel[h.tingkat] !== undefined) hamaLevel[h.tingkat]++; }));
+  });
+  charts['chartHamaTingkatOv'] = new Chart(document.getElementById('chartHamaTingkatOv'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(hamaLevel),
+      datasets: [{ data: Object.values(hamaLevel), backgroundColor: ['#fbbf24','#f97316','#ef4444'], borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} kasus` } }
       }
     }
   });
@@ -1962,11 +2010,12 @@ function openAddVisitModal(farmerId) {
   // Set default tanggal hari ini
   document.getElementById('vTanggal').value = new Date().toISOString().split('T')[0];
   document.getElementById('visitId').value = '';
+  // Selalu reset hama list saat buka modal
+  const hamaList = document.getElementById('visitHamaList');
+  if (hamaList) hamaList.innerHTML = '';
   populateFilters(); // refresh select petani
   if (farmerId) {
     document.getElementById('vFarmerSelect').value = farmerId;
-  const hamaList = document.getElementById('visitHamaList');
-  if (hamaList) hamaList.innerHTML = '';
     document.getElementById('visitFarmerId').value = farmerId;
   }
   openModal('modalVisit');
@@ -2860,6 +2909,61 @@ function getFallbackData() {
 }
 
 // ============================================================
+//  REKAP HAMA PAGE
+// ============================================================
+
+let _hamaFilterSearch = '';
+
+function renderHamaTable(searchVal) {
+  if (searchVal !== undefined) _hamaFilterSearch = searchVal.toLowerCase();
+  const tingkatFilter = document.getElementById('filterHamaTingkat')?.value || '';
+  const tbody = document.getElementById('hamaTableBody');
+  const countEl = document.getElementById('hamaCount');
+  if (!tbody) return;
+
+  const allHama = collectAllHama();
+  let filtered = allHama;
+  if (_hamaFilterSearch) {
+    filtered = filtered.filter(h =>
+      (h.farmerName || '').toLowerCase().includes(_hamaFilterSearch) ||
+      (h.nama || '').toLowerCase().includes(_hamaFilterSearch) ||
+      (h.tanaman || '').toLowerCase().includes(_hamaFilterSearch) ||
+      (h.desa || '').toLowerCase().includes(_hamaFilterSearch)
+    );
+  }
+  if (tingkatFilter) {
+    filtered = filtered.filter(h => h.tingkat === tingkatFilter);
+  }
+
+  if (countEl) countEl.textContent = `${filtered.length} data`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray-400)">
+      <i class="fas fa-check-circle" style="font-size:24px;display:block;margin-bottom:8px;color:var(--green-400)"></i>
+      Tidak ada data hama/penyakit
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((h, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${h.farmerName || '-'}</strong></td>
+      <td>${h.desa || '-'}</td>
+      <td>${h.tanaman || '-'}</td>
+      <td>${h.nama || '-'}</td>
+      <td>${pestLevelBadge(h.tingkat)}</td>
+      <td>${h.tanggalKunjungan || '-'}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${h.solusi || h.status || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+function filterHama(searchVal) {
+  renderHamaTable(searchVal);
+}
+
+// ============================================================
 //  GOOGLE SHEETS EXPORT
 // ============================================================
 
@@ -2878,16 +2982,29 @@ function exportToGoogleSheets() {
   // Update label jumlah data di modal
   const modal = document.getElementById('modalSheets');
   if (modal) {
-    const chkPetani    = document.getElementById('chkPetani');
-    const chkKunjungan = document.getElementById('chkKunjungan');
-    const chkProduksi  = document.getElementById('chkProduksi');
-
     const totalKunjungan  = farmers.reduce((s, f) => s + (f.kunjungan || []).length, 0);
     const totalProduksi   = farmers.reduce((s, f) => s + (f.produksi  || []).length, 0);
 
-    if (chkPetani)    { chkPetani.parentElement.innerHTML    = `<input type="checkbox" id="chkPetani" checked /> Data Petani (${farmers.length} petani)`; }
-    if (chkKunjungan) { chkKunjungan.parentElement.innerHTML = `<input type="checkbox" id="chkKunjungan" checked /> Data Kunjungan (${totalKunjungan} catatan)`; }
-    if (chkProduksi)  { chkProduksi.parentElement.innerHTML  = `<input type="checkbox" id="chkProduksi" checked /> Data Produksi (${totalProduksi} catatan)`; }
+    // Update label langsung (tidak overwrite innerHTML agar elemen tidak hilang)
+    const chkPetaniEl    = document.getElementById('chkPetani');
+    const chkKunjunganEl = document.getElementById('chkKunjungan');
+    const chkProduksiEl  = document.getElementById('chkProduksi');
+
+    if (chkPetaniEl)    {
+      const lbl = chkPetaniEl.parentElement;
+      chkPetaniEl.checked = true;
+      lbl.lastChild.textContent = ` Data Petani (${farmers.length} petani)`;
+    }
+    if (chkKunjunganEl) {
+      const lbl = chkKunjunganEl.parentElement;
+      chkKunjunganEl.checked = true;
+      lbl.lastChild.textContent = ` Data Kunjungan (${totalKunjungan} catatan)`;
+    }
+    if (chkProduksiEl)  {
+      const lbl = chkProduksiEl.parentElement;
+      chkProduksiEl.checked = true;
+      lbl.lastChild.textContent = ` Data Produksi (${totalProduksi} catatan)`;
+    }
 
     // Info foto
     const infoFoto = document.getElementById('sheetsInfoFoto');
@@ -3770,10 +3887,12 @@ async function gallerySendSelected() {
   if (gagal === 0) {
     showToast(`${sukses} foto berhasil dikirim ke Drive ✓`, 'success');
   } else {
-    statusEl.style.background  = '#fff7ed';
-    statusEl.style.color       = '#9a3412';
-    statusEl.style.borderColor = '#fed7aa';
-    msgEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${sukses} berhasil, ${gagal} gagal. Coba lagi.`;
+    if (statusEl) {
+      statusEl.style.background  = '#fff7ed';
+      statusEl.style.color       = '#9a3412';
+      statusEl.style.borderColor = '#fed7aa';
+      statusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${sukses} berhasil, ${gagal} gagal. Coba lagi.`;
+    }
     showToast(`${gagal} foto gagal dikirim`, 'error');
   }
 }
