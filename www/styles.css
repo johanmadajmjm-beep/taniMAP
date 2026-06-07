@@ -590,8 +590,14 @@ a { color: var(--green-600); text-decoration: none; }
 /* ============================================
    TABLE
    ============================================ */
-.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+table { min-width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; white-space: nowrap; }
 thead th {
   padding: 11px 14px;
   background: var(--gray-50);
@@ -602,7 +608,7 @@ thead th {
   text-transform: uppercase; letter-spacing: .7px;
   white-space: nowrap;
 }
-tbody td { padding: 13px 14px; border-bottom: 1px solid var(--gray-50); color: var(--gray-700); white-space: nowrap; }
+tbody td { padding: 13px 14px; border-bottom: 1px solid var(--gray-50); color: var(--gray-700); }
 tbody tr:hover { background: var(--green-50); }
 tbody tr:last-child td { border-bottom: none; }
 
