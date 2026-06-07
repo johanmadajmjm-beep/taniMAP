@@ -8,9 +8,6 @@ function mulaiApp() {
   splash.classList.add('hide');
   setTimeout(() => {
     splash.style.display = 'none';
-    // Render ulang dashboard setelah splash hilang agar ukuran benar
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderCharts === 'function') renderCharts();
     window.dispatchEvent(new Event('resize'));
   }, 500);
 }
