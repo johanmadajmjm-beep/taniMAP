@@ -867,7 +867,7 @@
 
 <!-- Toast Container -->
 <!-- ===== BOTTOM NAV (Mobile/APK only) ===== -->
-<nav class="bottom-nav" id="bottomNav" style="display:none">
+<nav class="bottom-nav" id="bottomNav">
 
   <!-- Tab 1: Beranda -->
   <button class="bottom-nav-item active" id="bnav-dashboard" onclick="navigate('dashboard')" style="flex-direction:column;align-items:center;justify-content:center;display:flex;height:100%;background:none;border:none;cursor:pointer;gap:3px;padding:6px 0">
@@ -1154,20 +1154,6 @@
 
 </div>
 
-<script>
-if (window.innerWidth <= 768) {
-  document.getElementById('bottomNav').style.display = 'grid';
-  document.getElementById('bottomNav').style.gridTemplateColumns = '1fr 1fr 72px 1fr 1fr';
-}
-window.addEventListener('resize', function() {
-  const nav = document.getElementById('bottomNav');
-  if (window.innerWidth <= 768) {
-    nav.style.display = 'grid';
-    nav.style.gridTemplateColumns = '1fr 1fr 72px 1fr 1fr';
-  } else {
-    nav.style.display = 'none';
-  }
-});
-</script>
+
 </body>
 </html>
