@@ -2213,7 +2213,7 @@ function renderProductionTable() {
       <td class="hide-mobile">${p.jumlah} ${p.satuan}</td>
       <td class="hide-mobile">Rp ${formatNumber(p.harga)}</td>
       <td class="fw-bold text-green">Rp ${formatNumber(p.total)}</td>
-      <td>${p.pembeli || '-'}</td>
+      <td class="hide-mobile">${p.pembeli || '-'}</td>
     </tr>
   `).join('');
 }
@@ -2992,12 +2992,12 @@ function renderHamaTable(searchVal) {
     <tr>
       <td>${i + 1}</td>
       <td><strong>${h.farmerName || '-'}</strong></td>
-      <td>${h.desa || '-'}</td>
-      <td>${h.tanaman || '-'}</td>
+      <td class="hide-mobile">${h.desa || '-'}</td>
+      <td class="hide-mobile">${h.tanaman || '-'}</td>
       <td>${h.nama || '-'}</td>
       <td>${pestLevelBadge(h.tingkat)}</td>
-      <td>${h.tanggalKunjungan || '-'}</td>
-      <td style="font-size:12px;color:var(--gray-500)">${h.solusi || h.status || '-'}</td>
+      <td class="hide-mobile">${h.tanggalKunjungan || '-'}</td>
+      <td class="hide-mobile" style="font-size:12px;color:var(--gray-500)">${h.solusi || h.status || '-'}</td>
     </tr>
   `).join('');
 }
