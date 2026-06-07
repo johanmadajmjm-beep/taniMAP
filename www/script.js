@@ -507,7 +507,7 @@ function renderCharts() {
       cutout: '65%',
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
-        tooltip: { callbacks: { label: ctx => ` Rp ${formatNumber(ctx.raw)}` } }
+        tooltip: { callbacks: { label: ctx => ` Rp ${formatJuta(ctx.raw)}` } }
       }
     }
   });
@@ -2874,6 +2874,24 @@ function pestLevelBadge(level) {
 function formatNumber(n) {
   if (!n && n !== 0) return '0';
   return Number(n).toLocaleString('id-ID');
+}
+
+// Format angka ke satuan juta untuk label grafik
+// contoh: 1000000 -> "1jta", 2500000 -> "2,5jta", 500000 -> "500rb"
+function formatJuta(n) {
+  if (!n && n !== 0) return '0';
+  n = Number(n);
+  if (n >= 1000000) {
+    const juta = n / 1000000;
+    const str = Number.isInteger(juta) ? juta.toString() : juta.toFixed(1).replace('.', ',');
+    return str + 'jta';
+  }
+  if (n >= 1000) {
+    const ribu = n / 1000;
+    const str = Number.isInteger(ribu) ? ribu.toString() : ribu.toFixed(1).replace('.', ',');
+    return str + 'rb';
+  }
+  return n.toString();
 }
 
 // ============================================================
