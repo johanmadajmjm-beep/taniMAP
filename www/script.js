@@ -4,9 +4,19 @@
 function mulaiApp() {
   const splash = document.getElementById('splashScreen');
   if (!splash) return;
+  // Tampilkan konten utama dulu
+  document.querySelectorAll('body > *:not(#splashScreen)').forEach(el => {
+    el.style.visibility = 'visible';
+  });
   splash.classList.add('hide');
   setTimeout(() => { splash.style.display = 'none'; }, 500);
 }
+
+// Pastikan splash langsung tampil saat DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const splash = document.getElementById('splashScreen');
+  if (splash) splash.style.visibility = 'visible';
+});
 
 /**
  * TaniMap — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani
