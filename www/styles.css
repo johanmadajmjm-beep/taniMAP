@@ -102,7 +102,6 @@ body {
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 button { cursor: pointer; font-family: var(--font-body); }
 input, select, textarea { font-family: var(--font-body); }
@@ -363,7 +362,7 @@ a { color: var(--green-600); text-decoration: none; }
 /* ============================================
    PAGE CONTENT
    ============================================ */
-.page-content { padding: 20px 24px 80px; flex: 1; max-width: 1200px; width: 100%; }
+.page-content { padding: 20px 24px 80px; flex: 1; }
 .page { display: none; animation: pageIn 0.28s var(--ease) both; }
 .page.active { display: block; }
 @keyframes pageIn {
