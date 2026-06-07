@@ -16,12 +16,37 @@ function mulaiApp() {
 }
 
 
-// Re-render chart saat window resize atau zoom
-window.addEventListener('resize', () => {
-  Object.values(charts).forEach(chart => {
-    if (chart) chart.resize();
-  });
-});
+// ============================================================
+//  RESPONSIVE RESIZE — real-time tanpa perlu refresh
+// ============================================================
+
+// Debounce helper
+function debounce(fn, delay) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+// Resize semua chart yang aktif
+function resizeAllCharts() {
+  Object.values(charts).forEach(c => { if (c) c.resize(); });
+}
+
+// Re-render ulang chart agar clamp() teraplikasi pada data baru
+const debouncedResizeCharts = debounce(() => {
+  resizeAllCharts();
+}, 80);
+
+// ResizeObserver pada .page-content — bereaksi terhadap perubahan ukuran container
+// (ini yang selama ini hilang — window resize event tidak cukup untuk Capacitor/webview)
+function initResponsiveObserver() {
+  const pageContent = document.querySelector('.page-content');
+  if (!pageContent || !window.ResizeObserver) return;
+  const ro = new ResizeObserver(debouncedResizeCharts);
+  ro.observe(pageContent);
+}
+
+// Window resize tetap dipasang sebagai fallback
+window.addEventListener('resize', debouncedResizeCharts);
+
 
 // Cek saat halaman load - skip splash jika sudah pernah masuk
 document.addEventListener('DOMContentLoaded', function() {
@@ -57,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   navigate('dashboard');       // Tampilkan halaman beranda
   loadAppPreferences();        // Muat tema & ukuran huruf
   initBackButton();            // Aktifkan back button handler
+  initResponsiveObserver();    // Aktifkan responsive resize real-time
 });
 // ============================================================
 //  UNIVERSAL DOWNLOAD — APK Android + Browser
@@ -225,9 +251,9 @@ function observeCharts() {
     if (!canvas) return;
     const container = canvas.parentElement;
     if (!container) return;
-    const ro = new ResizeObserver(() => {
+    const ro = new ResizeObserver(debounce(() => {
       if (charts[id]) charts[id].resize();
-    });
+    }, 60));
     ro.observe(container);
   });
 }
