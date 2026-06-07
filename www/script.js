@@ -6,16 +6,19 @@ function mulaiApp() {
   if (!splash) return;
   sessionStorage.setItem('splash_done', '1');
   splash.classList.add('hide');
-  setTimeout(() => { splash.style.display = 'none'; }, 500);
+  setTimeout(() => {
+    splash.style.display = 'none';
+    window.dispatchEvent(new Event('resize'));
+  }, 500);
 }
 
 // Cek saat halaman load - skip splash jika sudah pernah masuk
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
   if (sessionStorage.getItem('splash_done')) {
     const splash = document.getElementById('splashScreen');
     if (splash) splash.style.display = 'none';
   }
-});
+})();
 
 /**
  * TaniMap — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani
