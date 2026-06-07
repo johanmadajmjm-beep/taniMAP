@@ -4,10 +4,6 @@
 function mulaiApp() {
   const splash = document.getElementById('splashScreen');
   if (!splash) return;
-  // Tampilkan konten utama
-  const app = document.querySelector('.app-layout');
-  if (app) app.classList.add('ready');
-  // Sembunyikan splash
   splash.classList.add('hide');
   setTimeout(() => { splash.style.display = 'none'; }, 500);
 }
