@@ -591,14 +591,8 @@ a { color: var(--green-600); text-decoration: none; }
 /* ============================================
    TABLE
    ============================================ */
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-  /* Tambah border-radius agar scroll wrapper rapi */
-  border-radius: var(--r-sm);
-}
-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 0; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th {
   padding: 11px 14px;
   background: var(--gray-50);
@@ -613,12 +607,10 @@ tbody td { padding: 13px 14px; border-bottom: 1px solid var(--gray-50); color: v
 tbody tr:hover { background: var(--green-50); }
 tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 900px) {
-  /* Biarkan scroll horizontal — JANGAN overflow hidden */
-  .table-wrap { overflow-x: auto; }
-  /* Jangan table-layout:fixed agar kolom menyesuaikan konten */
-  table { table-layout: auto; width: max-content; min-width: 100%; }
-  thead th { font-size: 10px; padding: 8px 10px; white-space: nowrap; }
-  tbody td { font-size: 12px; padding: 8px 10px; white-space: nowrap; }
+  .table-wrap { overflow-x: hidden; }
+  table { table-layout: fixed; width: 100%; word-break: break-word; }
+  thead th { font-size: 10px; padding: 8px 5px; }
+  tbody td { font-size: 12px; padding: 8px 5px; }
   .hide-mobile { display: none !important; }
 }
 
