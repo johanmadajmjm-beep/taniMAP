@@ -10,12 +10,12 @@ function mulaiApp() {
 }
 
 // Cek saat halaman load - skip splash jika sudah pernah masuk
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('splash_done')) {
     const splash = document.getElementById('splashScreen');
     if (splash) splash.style.display = 'none';
   }
-})();
+});
 
 /**
  * TaniMap — Sistem Informasi Pendataan, Pemetaan, dan Monitoring Petani
