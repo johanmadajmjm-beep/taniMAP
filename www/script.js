@@ -12,6 +12,14 @@ function mulaiApp() {
   }, 500);
 }
 
+
+// Re-render chart saat window resize atau zoom
+window.addEventListener('resize', () => {
+  Object.values(state.charts).forEach(chart => {
+    if (chart) chart.resize();
+  });
+});
+
 // Cek saat halaman load - skip splash jika sudah pernah masuk
 document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('splash_done')) {
