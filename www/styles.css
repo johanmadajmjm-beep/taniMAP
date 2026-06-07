@@ -437,7 +437,7 @@ a { color: var(--green-600); text-decoration: none; }
    ============================================ */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
